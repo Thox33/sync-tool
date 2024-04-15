@@ -46,6 +46,7 @@ async def run_application() -> None:
         await asyncio.sleep(1)
         logger.info("Application is running...")
 
+
 def main() -> None:
     logger.info("Starting... PID: %s", os.getpid())
     loop = asyncio.new_event_loop()
