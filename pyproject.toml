@@ -1,0 +1,114 @@
+[tool.poetry]
+name = "sync-tool"
+version = "0.0.1"
+description = ""
+authors = ["Pascal Helmer <pascal@pascalhelmer.de>"]
+readme = "README.md"
+packages = [{ include = "sync_tool" }]
+
+[tool.poetry.scripts]
+template-python = "sync_tool.main:main"
+
+[tool.poetry.extras]
+performance = ["uvloop"]
+
+[tool.poetry.dependencies]
+python = ">=3.10, <3.12"
+pydantic = "1.10.13"
+uvloop = { version = "0.19.0", optional = true }
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "3.6.0"
+flake8 = "6.1.0"
+black = "23.11.0"
+isort = "5.13.0"
+mypy = "1.7.1"
+pytest = "7.4.3"
+pytest-asyncio = "0.23.2"
+pytest-cov = "4.1.0"
+python-semantic-release = "8.0.8"
+sphinx = "7.2.6"
+sphinx-rtd-theme = "2.0.0"
+sphinx-autodoc-typehints = "1.25.2"
+autodoc-pydantic = "1.9.0"
+livereload = "2.6.3"
+pytest-watch = "4.2.0"
+pytest-sugar = "0.9.7"
+pytest-icdiff = "0.9"
+bandit = { extras = ["toml"], version = "1.7.6" }
+pytest-mock = "3.12.0"
+pyfakefs = "5.3.2"
+enum-tools = { extras = ["sphinx"], version = "0.11.0" }
+
+[build-system]
+requires = ["poetry-core>=1.6.1"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 120
+target-version = ['py310']
+include = '\.pyi?$'
+exclude = '''
+
+(
+  /(
+      \.eggs         # exclude a few common directories in the
+    | \.git          # root of the project
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+  )/
+)
+'''
+
+[tool.isort]
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+line_length = 120
+skip = "tests"
+
+[tool.bandit]
+exclude_dirs = ["docs", "tests"]
+skips = []
+
+[tool.semantic_release]
+build_command = "source $VENV && poetry build && cd .."
+commit_author = "github-actions <github-actions@github.com>"
+commit_message = "chore(release): releasing version {version}  [skip ci]"
+major_on_zero = true
+version_variables = [
+    "sync_tool/__init__.py:__version__"
+]
+version_toml = [
+    "pyproject.toml:tool.poetry.version"
+]
+
+[tool.semantic_release.branches.stable]
+match = "main"
+prerelease = false
+
+[tool.semantic_release.branches.beta]
+match = "develop"
+prerelease = true
+prerelease_token = "rc"
+
+[tool.semantic_release.branches.alpha]
+match = "feature-.*"
+prerelease = true
+prerelease_token = "alpha"
+
+[tool.semantic_release.changelog]
+exclude_commit_patterns = [
+    "^Merge pull request",
+    "^Merge remote",
+    "^Merge branch",
+    "^chore(release):.*",
+    "^build(deps-dev):.*"
+]
