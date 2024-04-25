@@ -21,6 +21,8 @@ class JamaAdapter(AdapterBase):
     _config: JamaAdapterConfig
     _client: JamaClient
 
+    _projects: Dict[str, Any]
+
     @staticmethod
     def validate_config(options: Optional[Dict[str, Any]] = None) -> None:
         if options is None:
@@ -35,6 +37,9 @@ class JamaAdapter(AdapterBase):
         self._client = JamaClient(
             self._config.base_url, credentials=(self._config.client_id, self._config.client_secret), oauth=True
         )
+        # Resolve projects
+        _projects = self._client.get_projects()
+        logger.debug("Projects", projects=_projects)
 
     async def teardown(self) -> None:
         pass
