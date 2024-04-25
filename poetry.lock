@@ -1146,6 +1146,20 @@ pyyaml = ">=5.1"
 virtualenv = ">=20.10.0"
 
 [[package]]
+name = "py-jama-rest-client"
+version = "1.17.1"
+description = "A client for the Jama Connect REST API"
+optional = false
+python-versions = "*"
+files = [
+    {file = "py-jama-rest-client-1.17.1.tar.gz", hash = "sha256:ceed4e99fdc133ac595bcb76101f3d9ac4e07294b6fc80c9e2e2ab054f7bce73"},
+    {file = "py_jama_rest_client-1.17.1-py3-none-any.whl", hash = "sha256:f3eee95c4608ff0db1be57b432bf996c6bcc298005286280a150b5a049e63638"},
+]
+
+[package.dependencies]
+requests = "*"
+
+[[package]]
 name = "pycodestyle"
 version = "2.11.1"
 description = "Python style guide checker"
@@ -2258,4 +2272,4 @@ performance = ["uvloop"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10, <3.12"
-content-hash = "be9fcf7d0577ce515a7d31e9d68d3b3fc35cc765d5610317f884248a2e5121dc"
+content-hash = "bcbd9da804974c991315c3587e59d54c49e225173ef35b8875e103ce6355775c"
