@@ -2022,6 +2022,23 @@ files = [
 pbr = ">=2.0.0,<2.1.0 || >2.1.0"
 
 [[package]]
+name = "structlog"
+version = "24.1.0"
+description = "Structured Logging for Python"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "structlog-24.1.0-py3-none-any.whl", hash = "sha256:3f6efe7d25fab6e86f277713c218044669906537bb717c1807a09d46bca0714d"},
+    {file = "structlog-24.1.0.tar.gz", hash = "sha256:41a09886e4d55df25bdcb9b5c9674bccfab723ff43e0a86a1b7b236be8e57b16"},
+]
+
+[package.extras]
+dev = ["structlog[tests,typing]"]
+docs = ["furo", "myst-parser", "sphinx", "sphinx-notfound-page", "sphinxcontrib-mermaid", "sphinxext-opengraph", "twisted"]
+tests = ["freezegun (>=0.2.8)", "pretend", "pytest (>=6.0)", "pytest-asyncio (>=0.17)", "simplejson"]
+typing = ["mypy (>=1.4)", "rich", "twisted"]
+
+[[package]]
 name = "tabulate"
 version = "0.9.0"
 description = "Pretty-print tabular data"
@@ -2241,4 +2258,4 @@ performance = ["uvloop"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10, <3.12"
-content-hash = "5836185411c7786d5b2d32c6d877dd3091ec7f92ec5bd70a2249fb5df07081af"
+content-hash = "be9fcf7d0577ce515a7d31e9d68d3b3fc35cc765d5610317f884248a2e5121dc"

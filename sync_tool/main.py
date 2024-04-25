@@ -1,11 +1,12 @@
 import asyncio
-import logging
 import os
 import signal
 import sys
 import threading
 from types import FrameType
 from typing import Optional
+
+import structlog
 
 # If uvloop is installed, use it to run async loop
 try:
@@ -31,13 +32,22 @@ if sys.platform == "win32":
     )
 
 # setup loggers
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+structlog.configure(
+    processors=[
+        structlog.stdlib.add_log_level,
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.UnicodeDecoder(),
+        structlog.processors.JSONRenderer(),
+    ],
+    context_class=dict,
+    logger_factory=structlog.PrintLoggerFactory(),
+    cache_logger_on_first_use=True,
+)
+
+logger = structlog.getLogger(__name__)
 
 
 async def run_application() -> None:
