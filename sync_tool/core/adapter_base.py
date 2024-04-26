@@ -1,35 +1,21 @@
 from abc import ABCMeta, abstractmethod
-from typing import Any, Dict, Optional
+
+from ..settings import Settings
 
 
 class AdapterBase(metaclass=ABCMeta):
-    """Base class for dynamic, lazy loaded adapter.
-
-    .. hint:: The constructor will receive the options as parameters.
-    """
+    """Base class for synchronization adapter."""
 
     @staticmethod
     @abstractmethod
-    def validate_config(options: Optional[Dict[str, Any]] = None) -> None:
-        """Check if the adapter configuration is valid.
-
-        Will be called while smoke importing configured adapter classes.
+    def validate_settings(settings: Settings) -> None:
+        """Check if the settings configuration is valid.
 
         Args:
-            options: Optional dictionary of configured adapter options
+            settings: The loaded settings.
 
         Raises:
-            ValueError: If the configuration is invalid.
-
-        .. code-block::
-
-                {
-                ...,
-                "options": {             <--- This is the validated options dictionary
-                    "listen": "0.0.0.0",
-                    "port": 502
-                }
-            }
+            ValueError: If the settings configuration is invalid or something is missing.
         """
         raise NotImplementedError()
 

@@ -2272,4 +2272,4 @@ performance = ["uvloop"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10, <3.12"
-content-hash = "bcbd9da804974c991315c3587e59d54c49e225173ef35b8875e103ce6355775c"
+content-hash = "c8e01aee4fb64b8875d1117683fcdacd7d9e2075d72d8287be2e2299e2fcae59"

@@ -8,6 +8,8 @@ from typing import Optional
 
 import structlog
 
+from .app import Application
+
 # If uvloop is installed, use it to run async loop
 try:
     import uvloop
@@ -50,20 +52,17 @@ structlog.configure(
 logger = structlog.getLogger(__name__)
 
 
-async def run_application() -> None:
-    logger.info("Starting application...")
-    while True:
-        await asyncio.sleep(1)
-        logger.info("Application is running...")
-
-
 def main() -> None:
     logger.info("Starting... PID: %s", os.getpid())
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
+    # Prepare application
+    app = Application()
+
     def handle_exit(signal_number: int, frame: Optional[FrameType]) -> None:
         logger.info("Received signal %s. Sending stop signal to application...", signal.Signals(signal_number).name)
+        app.stop()
 
     # Prepare signal handlers
     if threading.current_thread() is not threading.main_thread():
@@ -77,14 +76,9 @@ def main() -> None:
         logger.info("Signal handlers installed")
     except NotImplementedError:  # pragma: no cover
         logger.warning("Signals are not supported. Possible on Windows")
-        # Windows
-        for sig in HANDLED_SIGNALS:
-            if sig is not None:
-                signal.signal(sig, handle_exit)
-        logger.info("Signal handlers installed")
 
     # Start application loop
-    main_task = loop.create_task(run_application())
+    main_task = loop.create_task(app.run_forever())
 
     try:
         loop.run_until_complete(main_task)

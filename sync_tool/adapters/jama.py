@@ -1,10 +1,11 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import structlog
 from py_jama_rest_client.client import JamaClient
 from pydantic import BaseModel
 
-from sync_tool.core.adapter_base import AdapterBase
+from ..core.adapter_base import AdapterBase
+from ..settings import Settings
 
 logger = structlog.getLogger(__name__)
 
@@ -24,14 +25,22 @@ class JamaAdapter(AdapterBase):
     _projects: Dict[str, Any]
 
     @staticmethod
-    def validate_config(options: Optional[Dict[str, Any]] = None) -> None:
-        if options is None:
-            raise ValueError("options has to be provided")
+    def validate_settings(settings: Settings) -> None:
+        if settings is None:
+            raise ValueError("settings has to be provided")
 
-        JamaAdapterConfig(**options)
+        JamaAdapterConfig(
+            base_url=settings.jama_base_url,
+            client_id=settings.jama_client_id,
+            client_secret=settings.jama_client_secret,
+        )
 
-    def __init__(self, base_url: str, client_id: str, client_secret: str) -> None:
-        self._config = JamaAdapterConfig(base_url=base_url, client_id=client_id, client_secret=client_secret)
+    def __init__(self, settings: Settings) -> None:
+        self._config = JamaAdapterConfig(
+            base_url=settings.jama_base_url,
+            client_id=settings.jama_client_id,
+            client_secret=settings.jama_client_secret,
+        )
 
     async def init(self) -> None:
         self._client = JamaClient(
@@ -39,7 +48,7 @@ class JamaAdapter(AdapterBase):
         )
         # Resolve projects
         _projects = self._client.get_projects()
-        logger.debug("Projects", projects=_projects)
+        logger.debug("projects", projects=_projects)
 
     async def teardown(self) -> None:
         pass
