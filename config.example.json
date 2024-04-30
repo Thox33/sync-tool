@@ -1,0 +1,137 @@
+{
+  "types": {
+    "users": {
+      "fields": {
+        "id": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string",
+          "default": ""
+        },
+        "firstName": {
+          "type": "string",
+          "default": ""
+        },
+        "lastName": {
+          "type": "string",
+          "default": ""
+        },
+        "email": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "projects": {
+      "fields": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "default": ""
+        },
+        "description": {
+          "type": "string",
+          "default": ""
+        },
+        "createdAt": {
+          "type": "datetime",
+          "default": "now"
+        },
+        "createdBy": {
+          "type": "reference",
+          "reference_type": "users"
+        },
+        "modifiedAt": {
+          "type": "datetime",
+          "default": "now"
+        },
+        "modifiedBy": {
+          "type": "reference",
+          "reference_type": "users"
+        }
+      }
+    },
+    "items": {
+      "fields": {
+        "id": {
+          "type": "string"
+        },
+        "project": {
+          "type": "reference",
+          "reference_type": "projects"
+        },
+        "name": {
+          "type": "string",
+          "default": ""
+        },
+        "description": {
+          "type": "string",
+          "default": ""
+        },
+        "createdAt": {
+          "type": "datetime",
+          "default": "now"
+        },
+        "createdBy": {
+          "type": "reference",
+          "reference_type": "users"
+        },
+        "modifiedAt": {
+          "type": "datetime",
+          "default": "now"
+        },
+        "modifiedBy": {
+          "type": "reference",
+          "reference_type": "users"
+        }
+      }
+    }
+  },
+  "provider": {
+    "det-jama": {
+      "provider": "jama",
+      "options": {
+        "url": "https://detectomat-prod.jamacloud.com/",
+        "clientId": "env(DET_JAMA_CLIENT_ID)",
+        "clientSecret": "env(DET_JAMA_CLIENT_SECRET)"
+      },
+      "mappings": {
+        "users": {
+          "fields": {
+            "id": "id",
+            "username": "username",
+            "firstName": "firstName",
+            "lastName": "lastName",
+            "email": "email"
+          }
+        },
+        "projects": {
+          "fields": {
+            "id": "id",
+            "name": "fields.name",
+            "description": "fields.description",
+            "createdAt": "createdAt",
+            "createdBy": "createdBy",
+            "modifiedAt": "modifiedAt",
+            "modifiedBy": "modifiedBy"
+          }
+        },
+        "items": {
+          "fields": {
+            "id": "id",
+            "project": "project",
+            "name": "fields.name",
+            "description": "fields.description",
+            "createdAt": "createdAt",
+            "createdBy": "createdBy",
+            "modifiedAt": "modifiedAt",
+            "modifiedBy": "modifiedBy"
+          }
+        }
+      }
+    }
+  }
+}
