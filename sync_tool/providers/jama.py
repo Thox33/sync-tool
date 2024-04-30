@@ -1,11 +1,10 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import structlog
 from py_jama_rest_client.client import JamaClient
 from pydantic import BaseModel
 
-from ..core.adapter_base import AdapterBase
-from ..settings import Settings
+from sync_tool.core.provider.provider_base import ProviderBase
 
 logger = structlog.getLogger(__name__)
 
@@ -13,37 +12,33 @@ JamaUser = Dict[str, Any]
 JamaProject = Dict[str, Any]
 
 
-class JamaAdapterConfig(BaseModel):
+class JamaProviderConfig(BaseModel):
     base_url: str
     client_id: str
     client_secret: str
 
 
-class JamaAdapter(AdapterBase):
+class JamaProvider(ProviderBase):
     """Jama API wrapper used for fetching and updating data from Jama."""
 
-    _config: JamaAdapterConfig
+    _config: JamaProviderConfig
     _client: JamaClient
 
     _users: Dict[str, JamaUser]  # Normalized by user ID
     _projects: Dict[str, JamaProject]  # Normalized by project ID
 
     @staticmethod
-    def validate_settings(settings: Settings) -> None:
-        if settings is None:
-            raise ValueError("settings has to be provided")
+    def validate_config(options: Optional[Dict[str, Any]] = None) -> None:
+        if options is None:
+            raise ValueError("options has to be provided")
 
-        JamaAdapterConfig(
-            base_url=settings.jama_base_url,
-            client_id=settings.jama_client_id,
-            client_secret=settings.jama_client_secret,
-        )
+        JamaProviderConfig(**options)
 
-    def __init__(self, settings: Settings) -> None:
-        self._config = JamaAdapterConfig(
-            base_url=settings.jama_base_url,
-            client_id=settings.jama_client_id,
-            client_secret=settings.jama_client_secret,
+    def __init__(self, base_url: str, client_id: str, client_secret: str) -> None:
+        self._config = JamaProviderConfig(
+            base_url=base_url,
+            client_id=client_id,
+            client_secret=client_secret,
         )
 
     async def init(self) -> None:
