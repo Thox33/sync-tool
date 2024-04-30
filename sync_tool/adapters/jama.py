@@ -9,6 +9,7 @@ from ..settings import Settings
 
 logger = structlog.getLogger(__name__)
 
+JamaUser = Dict[str, Any]
 JamaProject = Dict[str, Any]
 
 
@@ -24,6 +25,7 @@ class JamaAdapter(AdapterBase):
     _config: JamaAdapterConfig
     _client: JamaClient
 
+    _users: Dict[str, JamaUser]  # Normalized by user ID
     _projects: Dict[str, JamaProject]  # Normalized by project ID
 
     @staticmethod
@@ -48,8 +50,18 @@ class JamaAdapter(AdapterBase):
         self._client = JamaClient(
             self._config.base_url, credentials=(self._config.client_id, self._config.client_secret), oauth=True
         )
-        # Resolve projects
+        # Load and cache users and projects
+        self._load_users()
         self._load_projects()
+
+    def _load_users(self) -> None:
+        """Retrieve all users from Jama. Normalize and store them in a dictionary."""
+        users_list = self._client.get_users()
+        users_normalized = {}
+        for user in users_list:
+            users_normalized[str(user["id"])] = user
+        self._users = users_normalized
+        logger.debug("loaded users", users=self._users)
 
     def _load_projects(self) -> None:
         """Retrieve all projects from Jama. Normalize and store them in a dictionary."""
@@ -59,6 +71,9 @@ class JamaAdapter(AdapterBase):
             projects_normalized[str(project["id"])] = project
         self._projects = projects_normalized
         logger.debug("loaded projects", projects=self._projects)
+
+    def get_user_by_id(self, user_id: str) -> JamaUser | None:
+        return self._users.get(user_id)
 
     def get_project_by_id(self, project_id: str) -> JamaProject | None:
         return self._projects.get(project_id)
