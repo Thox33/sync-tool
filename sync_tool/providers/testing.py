@@ -10,8 +10,7 @@ class TestingProvider(ProviderBase):
 
     @staticmethod
     def validate_config(options: Optional[Dict[str, Any]] = None) -> None:
-        if options is not None:
-            raise ValueError("Testing provider does not support options.")
+        pass
 
     async def init(self) -> None:
         pass

@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from sync_tool.configuration import ProviderConfig, Configuration, load_configuration
 from sync_tool.core.provider.provider_base import ProviderBase
@@ -16,14 +18,20 @@ def test_provider_config():
     with pytest.raises(ValueError):
         ProviderConfig(provider="sync-tool-foo")
 
-    # Testing provider does not support options
-    with pytest.raises(ValueError):
-        ProviderConfig(provider="sync-tool-provider-testing", options={"foo": "bar"})
-
+    ProviderConfig(provider="sync-tool-provider-testing", options={"foo": "bar"})
     ProviderConfig(provider="sync-tool-provider-testing")
 
     provider_cfg = ProviderConfig(provider="sync-tool-provider-testing")
     assert isinstance(provider_cfg.make_instance(), ProviderBase)
+
+
+def test_provider_config_options_special_values():
+    os.environ["SYNC_TOOL_TESTING_ENVIRONMENT_VARIABLE"] = "baz"
+    provider_cfg = ProviderConfig(
+        provider="sync-tool-provider-testing", options={"foo": "env(SYNC_TOOL_TESTING_ENVIRONMENT_VARIABLE)"}
+    )
+    assert provider_cfg.options == {"foo": "baz"}
+    del os.environ["SYNC_TOOL_TESTING_ENVIRONMENT_VARIABLE"]
 
 
 def test_configuration_default_values():

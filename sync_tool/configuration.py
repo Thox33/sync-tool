@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -25,6 +26,25 @@ class ProviderConfig(BaseModel):
     """Options to configure this provider"""
     provider: str
     """Entrypoint name of the provider. Example: 'sync-tool-provider-testing'"""
+
+    @field_validator("options")
+    @classmethod
+    def validate_options(cls, options: Optional[Dict[str, Any]], info: ValidationInfo) -> Dict[str, Any] | None:
+        """As we do not validate the options our self, we just pass them
+        through using the provider validator. We instead search for special values in the options
+        which could be e.g. environment variables."""
+
+        if options is None:
+            return options
+
+        # Check for special values in options
+        for key, value in options.items():
+            if isinstance(value, str) and value.startswith("env(") and value.endswith(")") and len(value) > 5:
+                env_var = value[4:-1]
+                resolved = os.environ.get(env_var)
+                options[key] = resolved
+
+        return options
 
     @field_validator("provider")
     @classmethod
