@@ -3,7 +3,7 @@ from sync_tool.configuration import ProviderConfiguration, Configuration, load_c
 
 def test_configuration_default_values():
     config = Configuration()
-    assert config.providers == []
+    assert config.providers == {}
 
 
 def test_configuration_validates_providers():

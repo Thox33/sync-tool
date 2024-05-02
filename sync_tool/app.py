@@ -2,7 +2,7 @@ import asyncio
 
 import structlog
 
-from .settings import Settings
+from sync_tool.configuration import Configuration, load_configuration
 
 logger = structlog.getLogger(__name__)
 
@@ -13,11 +13,11 @@ class Application:
     loop and finally shut down all adapters.
     """
 
-    _settings: Settings
+    _configuration: Configuration
     _should_stop: bool
 
     def __init__(self) -> None:
-        self._settings = Settings()
+        self._configuration = load_configuration()
         self._should_stop = False
 
     async def run_forever(self) -> None:
