@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import structlog
 from py_jama_rest_client.client import JamaClient
@@ -10,6 +10,7 @@ logger = structlog.getLogger(__name__)
 
 JamaUser = Dict[str, Any]
 JamaProject = Dict[str, Any]
+JamaAbstractItem = Dict[str, Any]
 
 
 class JamaProviderConfig(BaseModel):
@@ -28,11 +29,22 @@ class JamaProvider(ProviderBase):
     _projects: Dict[str, JamaProject]  # Normalized by project ID
 
     @staticmethod
+    def _create_client(config: JamaProviderConfig) -> JamaClient:
+        return JamaClient(
+            config.base_url,
+            credentials=(config.client_id, config.client_secret),
+            oauth=True,
+        )
+
+    @staticmethod
     def validate_config(options: Optional[Dict[str, Any]] = None) -> None:
         if options is None:
             raise ValueError("options has to be provided")
 
-        JamaProviderConfig(**options)
+        config = JamaProviderConfig(**options)
+        # Validate credentials
+        client = JamaProvider._create_client(config)
+        client.get_current_user()
 
     def __init__(self, base_url: str, client_id: str, client_secret: str) -> None:
         self._config = JamaProviderConfig(
@@ -42,9 +54,9 @@ class JamaProvider(ProviderBase):
         )
 
     async def init(self) -> None:
-        self._client = JamaClient(
-            self._config.base_url, credentials=(self._config.client_id, self._config.client_secret), oauth=True
-        )
+        # Setup client
+        self._client = JamaProvider._create_client(self._config)
+        self._client.set_allowed_results_per_page(50)  # Defaults to 20 results per page. Max is 50.
         # Load and cache users and projects
         self._load_users()
         self._load_projects()
@@ -72,6 +84,9 @@ class JamaProvider(ProviderBase):
 
     def get_project_by_id(self, project_id: str) -> JamaProject | None:
         return self._projects.get(project_id)
+
+    def get_items_by_project_id(self, project_id: str) -> List[JamaAbstractItem]:
+        return self._client.get_abstract_items(project=[project_id])
 
     async def teardown(self) -> None:
         pass
