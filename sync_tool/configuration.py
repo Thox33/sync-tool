@@ -1,11 +1,13 @@
 import json
 from pathlib import Path
-from typing import List
+from typing import Dict
 
 import structlog
+from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from sync_tool.contants import CONFIGURATION_FILE_NAME
+from sync_tool.core.data.data_configuration import DataConfiguration
 from sync_tool.core.provider.provider_base import ProviderBase
 from sync_tool.core.provider.provider_configuration import ProviderConfiguration
 
@@ -20,14 +22,17 @@ class Configuration(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
+    # Data configuration
+    data: DataConfiguration = Field(default_factory=dict)
+
     # Provider configuration
-    providers: List[ProviderConfiguration] = Field(default_factory=list)
+    providers: Dict[str, ProviderConfiguration] = Field(default_factory=dict)  # Dict key is the provider name
 
     @field_validator("providers")
     @classmethod
-    def validate_providers(cls, providers: List[ProviderConfiguration]) -> List[ProviderConfiguration]:
+    def validate_providers(cls, providers: Dict[str, ProviderConfiguration]) -> Dict[str, ProviderConfiguration]:
         """Validate all provider configurations."""
-        if not all(isinstance(provider.make_instance(), ProviderBase) for provider in providers):
+        if not all(isinstance(provider.make_instance(), ProviderBase) for provider in providers.values()):
             raise ValueError("Not all providers are of type ProviderBase.")
 
         return providers
@@ -48,6 +53,9 @@ def load_configuration(config_path: str = CONFIGURATION_FILE_NAME) -> Configurat
     """
 
     configuration_path = Path(config_path)
+
+    # Load environment variables from .env file
+    load_dotenv()
 
     # Check if we need to create a new configuration file
     if not configuration_path.exists():

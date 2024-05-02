@@ -38,6 +38,7 @@ class ProviderConfiguration(BaseModel):
         for key, value in options.items():
             if isinstance(value, str) and value.startswith("env(") and value.endswith(")") and len(value) > 5:
                 env_var = value[4:-1]
+                logger.debug(f"Resolving environment variable in option {key} with environment variable {env_var}")
                 resolved = os.environ.get(env_var)
                 options[key] = resolved
 
