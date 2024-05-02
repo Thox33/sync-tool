@@ -2,7 +2,8 @@ from contextlib import nullcontext as does_not_raise
 from datetime import datetime
 
 import pytest
-from sync_tool.core.internal_type.field_type import (
+
+from sync_tool.core.data.type.field_type import (
     FieldTypeNumber,
     FieldTypeString,
     FieldTypeDatetime,
