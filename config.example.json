@@ -1,104 +1,98 @@
 {
-  "types": {
-    "users": {
-      "fields": {
-        "id": {
-          "type": "string"
-        },
-        "username": {
-          "type": "string",
-          "default": ""
-        },
-        "firstName": {
-          "type": "string",
-          "default": ""
-        },
-        "lastName": {
-          "type": "string",
-          "default": ""
-        },
-        "email": {
-          "type": "string",
-          "default": ""
+  "data": {
+    "types": {
+      "users": {
+        "fields": {
+          "id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string",
+            "default": ""
+          },
+          "firstName": {
+            "type": "string",
+            "default": ""
+          },
+          "lastName": {
+            "type": "string",
+            "default": ""
+          },
+          "email": {
+            "type": "string",
+            "default": ""
+          }
         }
-      }
-    },
-    "projects": {
-      "fields": {
-        "id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string",
-          "default": ""
-        },
-        "description": {
-          "type": "string",
-          "default": ""
-        },
-        "createdAt": {
-          "type": "datetime",
-          "default": "now"
-        },
-        "createdBy": {
-          "type": "reference",
-          "reference_type": "users"
-        },
-        "modifiedAt": {
-          "type": "datetime",
-          "default": "now"
-        },
-        "modifiedBy": {
-          "type": "reference",
-          "reference_type": "users"
-        }
-      }
-    },
-    "items": {
-      "fields": {
-        "id": {
-          "type": "string"
-        },
-        "project": {
-          "type": "reference",
-          "reference_type": "projects"
-        },
-        "name": {
-          "type": "string",
-          "default": ""
-        },
-        "description": {
-          "type": "string",
-          "default": ""
-        },
-        "createdAt": {
-          "type": "datetime",
-          "default": "now"
-        },
-        "createdBy": {
-          "type": "reference",
-          "reference_type": "users"
-        },
-        "modifiedAt": {
-          "type": "datetime",
-          "default": "now"
-        },
-        "modifiedBy": {
-          "type": "reference",
-          "reference_type": "users"
-        }
-      }
-    }
-  },
-  "provider": {
-    "det-jama": {
-      "provider": "jama",
-      "options": {
-        "url": "https://detectomat-prod.jamacloud.com/",
-        "clientId": "env(DET_JAMA_CLIENT_ID)",
-        "clientSecret": "env(DET_JAMA_CLIENT_SECRET)"
       },
-      "mappings": {
+      "projects": {
+        "fields": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "default": ""
+          },
+          "description": {
+            "type": "string",
+            "default": ""
+          },
+          "createdAt": {
+            "type": "datetime",
+            "default": "now"
+          },
+          "createdBy": {
+            "type": "reference",
+            "reference_type": "users"
+          },
+          "modifiedAt": {
+            "type": "datetime",
+            "default": "now"
+          },
+          "modifiedBy": {
+            "type": "reference",
+            "reference_type": "users"
+          }
+        }
+      },
+      "items": {
+        "fields": {
+          "id": {
+            "type": "string"
+          },
+          "project": {
+            "type": "reference",
+            "reference_type": "projects"
+          },
+          "name": {
+            "type": "string",
+            "default": ""
+          },
+          "description": {
+            "type": "string",
+            "default": ""
+          },
+          "createdAt": {
+            "type": "datetime",
+            "default": "now"
+          },
+          "createdBy": {
+            "type": "reference",
+            "reference_type": "users"
+          },
+          "modifiedAt": {
+            "type": "datetime",
+            "default": "now"
+          },
+          "modifiedBy": {
+            "type": "reference",
+            "reference_type": "users"
+          }
+        }
+      }
+    },
+    "mappings": {
+      "sync-tool-provider-jama": {
         "users": {
           "fields": {
             "id": "id",
@@ -131,6 +125,16 @@
             "modifiedBy": "modifiedBy"
           }
         }
+      }
+    }
+  },
+  "providers": {
+    "det-jama": {
+      "provider": "sync-tool-provider-jama",
+      "options": {
+        "url": "https://detectomat-prod.jamacloud.com",
+        "clientId": "env(DET_JAMA_CLIENT_ID)",
+        "clientSecret": "env(DET_JAMA_CLIENT_SECRET)"
       }
     }
   }
