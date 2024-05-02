@@ -110,6 +110,6 @@ def load_configuration(config_path: str = CONFIGURATION_FILE_NAME) -> Configurat
         configuration_path.write_text(Configuration().model_dump_json(), encoding="utf-8")
 
     # Load the configuration from file
-    logger.info(f"Loading configuration from {configuration_path}")
+    logger.debug(f"Loading configuration from {configuration_path}")
     data = json.loads(configuration_path.read_text(encoding="utf-8"))
     return Configuration(**data)
