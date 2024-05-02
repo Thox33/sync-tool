@@ -14,9 +14,9 @@ JamaAbstractItem = Dict[str, Any]
 
 
 class JamaProviderConfig(BaseModel):
-    base_url: str
-    client_id: str
-    client_secret: str
+    url: str
+    clientId: str
+    clientSecret: str
 
 
 class JamaProvider(ProviderBase):
@@ -31,8 +31,8 @@ class JamaProvider(ProviderBase):
     @staticmethod
     def _create_client(config: JamaProviderConfig) -> JamaClient:
         return JamaClient(
-            config.base_url,
-            credentials=(config.client_id, config.client_secret),
+            config.url,
+            credentials=(config.clientId, config.clientSecret),
             oauth=True,
         )
 
@@ -46,11 +46,11 @@ class JamaProvider(ProviderBase):
         client = JamaProvider._create_client(config)
         client.get_current_user()
 
-    def __init__(self, base_url: str, client_id: str, client_secret: str) -> None:
+    def __init__(self, url: str, clientId: str, clientSecret: str) -> None:
         self._config = JamaProviderConfig(
-            base_url=base_url,
-            client_id=client_id,
-            client_secret=client_secret,
+            url=url,
+            clientId=clientId,
+            clientSecret=clientSecret,
         )
 
     async def init(self) -> None:

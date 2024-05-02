@@ -2,7 +2,7 @@ from typing import Any, Dict, List
 
 from pydantic import BaseModel, Field
 
-from sync_tool.core.internal_type.field_type import FieldTypeReference, FieldTypes, create_field_type
+from sync_tool.core.data.type.field_type import FieldTypeReference, FieldTypes, create_field_type
 
 
 class InternalType(BaseModel):
@@ -12,6 +12,7 @@ class InternalType(BaseModel):
 
     name: str
     fields: List[FieldTypes] = Field(..., discriminator="type")
+    # TODO: Remove data from InternalType and create a separate class for it
     data: Dict[str, Dict[str, Any]] = Field(default_factory=dict)  # Dict[provider_name, Dict[field_name, field_value]]
 
     def store_data(self, provider_name: str, data: Dict[str, Any]) -> None:
