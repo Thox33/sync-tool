@@ -1,6 +1,9 @@
+import structlog
 import typer
 
 from sync_tool.configuration import load_configuration
+
+logger = structlog.getLogger(__name__)
 
 # Subcommand: Configuration
 cli_config = typer.Typer(no_args_is_help=True)

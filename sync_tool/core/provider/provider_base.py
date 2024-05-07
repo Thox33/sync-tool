@@ -1,6 +1,8 @@
 from abc import ABCMeta, abstractmethod
 from typing import Any, Dict, Optional
 
+from sync_tool.core.sync.sync_rule import SyncRuleSource
+
 
 class ProviderBase(metaclass=ABCMeta):
     """Base class for datasource providers"""
@@ -39,6 +41,20 @@ class ProviderBase(metaclass=ABCMeta):
 
         Raises:
             ProviderInitError: If the initialization fails.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def validate_sync_rule_source(self, source: SyncRuleSource) -> None:
+        """Validate the source of a sync rule.
+
+        Will be called when a sync rule is loaded to validate the source.
+
+        Args:
+            source: The source to validate.
+
+        Raises:
+            ValueError: If the source is invalid.
         """
         raise NotImplementedError()
 

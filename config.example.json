@@ -129,12 +129,44 @@
     }
   },
   "providers": {
-    "det-jama": {
+    "<provider_name>": {
       "provider": "sync-tool-provider-jama",
       "options": {
         "url": "https://detectomat-prod.jamacloud.com",
         "clientId": "env(DET_JAMA_CLIENT_ID)",
         "clientSecret": "env(DET_JAMA_CLIENT_SECRET)"
+      }
+    }
+  },
+  "sync": {
+    "<sync_name>": {
+      "rules": {
+        "<rule_name>": {
+          "source": {
+            "provider": "<provider_name>",
+            "type": "<type_name>",
+            "query": {
+              "filter": {
+                "project": [
+                  "<project>"
+                ],
+                "itemType": [
+                  "<itemType>"
+                ],
+                "documentKey": [
+                  "<documentKey>"
+                ],
+                "release": [
+                  "<release>"
+                ]
+              }
+            }
+          },
+          "destination": {
+            "provider": "<provider_name>",
+            "type": "<type_name>"
+          }
+        }
       }
     }
   }
