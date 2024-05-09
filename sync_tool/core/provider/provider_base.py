@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from typing import Any, Dict, Optional
 
-from sync_tool.core.sync.sync_rule import SyncRuleSource
+from sync_tool.core.sync.sync_rule import SyncRuleQuery, SyncRuleSource
 
 
 class ProviderBase(metaclass=ABCMeta):
@@ -55,6 +55,25 @@ class ProviderBase(metaclass=ABCMeta):
 
         Raises:
             ValueError: If the source is invalid.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    async def get_data(self, item_type: str, query: SyncRuleQuery) -> Any:
+        """Get data from the provider.
+
+        Will be called to get data from the provider.
+
+        Args:
+            item_type: The source to get the data from.
+            query: The query to filter the data based on.
+
+        Returns:
+            List[Dict[str, Any]]: The data as list.
+
+        Raises:
+            ValueError: If the item_type is invalid or not supported by this provider.
+            ProviderGetDataError: If the data could not be retrieved.
         """
         raise NotImplementedError()
 

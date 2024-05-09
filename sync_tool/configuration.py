@@ -43,6 +43,30 @@ class Configuration(BaseModel):
 
         return providers
 
+    def get_sync(self, sync_name: str) -> SyncConfiguration | None:
+        """Get the sync configuration for a given sync name.
+
+        Args:
+            sync_name (str): Name of the sync configuration to get.
+
+        Returns:
+            SyncConfiguration: The sync configuration.
+            None: If the sync configuration does not exist.
+        """
+        return self.sync.get(sync_name)
+
+    def get_provider(self, provider_name: str) -> ProviderConfiguration | None:
+        """Get the provider configuration for a given provider name.
+
+        Args:
+            provider_name (str): Name of the provider configuration to get.
+
+        Returns:
+            ProviderConfiguration: The provider configuration.
+            None: If the provider configuration does not exist.
+        """
+        return self.providers.get(provider_name)
+
 
 def load_configuration(config_path: str = CONFIGURATION_FILE_NAME) -> Configuration:
     """Loads the configuration from a file. Validates the configuration twice.

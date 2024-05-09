@@ -6,7 +6,7 @@ from py_jama_rest_client.core import CoreException, py_jama_rest_client_logger
 from pydantic import BaseModel
 
 from sync_tool.core.provider.provider_base import ProviderBase
-from sync_tool.core.sync.sync_rule import SyncRuleSource
+from sync_tool.core.sync.sync_rule import SyncRuleQuery, SyncRuleSource
 
 logger = structlog.getLogger(__name__)
 
@@ -172,6 +172,53 @@ class JamaProvider(ProviderBase):
 
     def get_items_by_project_id(self, project_id: str) -> List[JamaAbstractItem]:
         return self._client.get_abstract_items(project=[project_id])
+
+    async def get_data(self, item_type: str, query: SyncRuleQuery) -> List[Dict[str, Any]]:
+        """Get data from the provider.
+
+        Will be called to get data from the provider.
+
+        Args:
+            item_type: The source to get the data from.
+            query: The query to filter the data based on.
+
+        Returns:
+            List[Dict[str, Any]]: The data as list.
+
+        Raises:
+            ValueError: If the item_type is invalid or not supported by this provider.
+            ProviderGetDataError: If the data could not be retrieved.
+        """
+        query_filter = query.filter
+
+        if "project" in query_filter:
+            project_ids = query_filter["project"]
+        else:
+            project_ids = None
+
+        if "itemType" in query_filter:
+            item_types = query_filter["itemType"]
+        else:
+            item_types = None
+
+        if "documentKey" in query_filter:
+            document_keys = query_filter["documentKey"]
+        else:
+            document_keys = None
+
+        if "release" in query_filter:
+            release_ids = query_filter["release"]
+        else:
+            release_ids = None
+
+        items = self._client.get_abstract_items(
+            project=project_ids,
+            item_type=item_types,
+            document_key=document_keys,
+            release=release_ids,
+        )
+
+        return items
 
     async def teardown(self) -> None:
         pass
