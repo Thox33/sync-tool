@@ -2,6 +2,10 @@ import structlog
 import typer
 
 from sync_tool.configuration import load_configuration
+from sync_tool.logging import configure_logging
+
+# setup loggers
+configure_logging(is_console=True)
 
 logger = structlog.getLogger(__name__)
 

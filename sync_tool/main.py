@@ -8,6 +8,8 @@ from typing import Optional
 
 import structlog
 
+from sync_tool.logging import configure_logging
+
 from .app import Application
 
 # If uvloop is installed, use it to run async loop
@@ -34,20 +36,7 @@ if sys.platform == "win32":
     )
 
 # setup loggers
-structlog.configure(
-    processors=[
-        structlog.stdlib.add_log_level,
-        structlog.processors.StackInfoRenderer(),
-        structlog.processors.format_exc_info,
-        structlog.stdlib.PositionalArgumentsFormatter(),
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.UnicodeDecoder(),
-        structlog.processors.JSONRenderer(),
-    ],
-    context_class=dict,
-    logger_factory=structlog.PrintLoggerFactory(),
-    cache_logger_on_first_use=True,
-)
+configure_logging()
 
 logger = structlog.getLogger(__name__)
 
