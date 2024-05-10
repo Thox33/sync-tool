@@ -1,13 +1,17 @@
-from typing import Any, Dict, List, Optional
-import structlog
-from pydantic import BaseModel
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+import requests
+import structlog
 from azure.devops.connection import Connection
 from azure.devops.v7_0.core.core_client import CoreClient
-from azure.devops.v7_0.work_item_tracking.work_item_tracking_client import WorkItemTrackingClient
 from azure.devops.v7_0.work_item_tracking.models import Wiql
+from azure.devops.v7_0.work_item_tracking.work_item_tracking_client import WorkItemTrackingClient
 from msrest.authentication import BasicAuthentication
-import requests
+from pydantic import BaseModel
+
+from sync_tool.core.provider.provider_base import ProviderBase
+from sync_tool.core.sync.sync_rule import SyncRuleQuery, SyncRuleSource
 
 logger = structlog.getLogger(__name__)
 
@@ -21,15 +25,23 @@ class AzureDevOpsConfig(BaseModel):
     personal_access_token: str
 
 
-class AzureDevOpsProvider:
+class AzureDevOpsProvider(ProviderBase):
     """Azure DevOps API wrapper used for fetching and updating data from Azure DevOps."""
 
     _config: AzureDevOpsConfig
-    _connection: Optional[Connection] = None
-    _core_client: Optional[CoreClient] = None
-    _work_item_client: Optional[WorkItemTrackingClient] = None
+    _connection: Connection
+    _core_client: CoreClient
+    _work_item_client: WorkItemTrackingClient
     _users: Dict[str, AzureUser] = {}
     _projects: Dict[str, AzureProject] = {}
+
+    @staticmethod
+    def validate_config(options: Optional[Dict[str, Any]] = None) -> None:
+        if options is None:
+            raise ValueError("options has to be provided")
+
+        AzureDevOpsConfig(**options)
+        # TODO: Validate credentials
 
     def __init__(self, organization_url: str, personal_access_token: str) -> None:
         self._config = AzureDevOpsConfig(
@@ -46,11 +58,8 @@ class AzureDevOpsProvider:
 
     def _connect(self) -> None:
         """Initialize the connection to Azure DevOps."""
-        credentials = BasicAuthentication('', self._config.personal_access_token)
-        self._connection = Connection(
-            base_url=self._config.organization_url,
-            creds=credentials
-        )
+        credentials = BasicAuthentication("", self._config.personal_access_token)
+        self._connection = Connection(base_url=self._config.organization_url, creds=credentials)
         self._core_client = self._connection.clients.get_core_client()
         self._work_item_client = self._connection.clients.get_work_item_tracking_client()
 
@@ -77,26 +86,34 @@ class AzureDevOpsProvider:
                 for team in teams:
                     team_id = team.id
                     # Construct the URL for fetching members of the current team using direct HTTP requests
-                    members_url = f"{self._config.organization_url}/_apis/projects/{project_id}/teams/{team_id}/members?api-version=6.0"
-                    response = requests.get(members_url, auth=('', self._config.personal_access_token))
+                    members_url = (
+                        f"{self._config.organization_url}/_apis/projects/"
+                        f"{project_id}/teams/{team_id}/members?api-version=6.0"
+                    )
+                    response = requests.get(members_url, auth=("", self._config.personal_access_token), timeout=10)
 
                     if response.status_code == 200:
                         members_data = response.json()
-                        for member in members_data.get('value', []):
-                            user_id = str(member['identity']['id'])
+                        for member in members_data.get("value", []):
+                            user_id = str(member["identity"]["id"])
 
                             if user_id not in self._users:
                                 self._users[user_id] = {
-                                    "id": member['identity']['id'],
-                                    "display_name": member['identity']['displayName'],
-                                    "unique_name": member['identity']['uniqueName'],
-                                    "url": member['identity']['url']
+                                    "id": member["identity"]["id"],
+                                    "display_name": member["identity"]["displayName"],
+                                    "unique_name": member["identity"]["uniqueName"],
+                                    "url": member["identity"]["url"],
                                 }
                                 logger.debug("loaded user", user_id=user_id, user_details=self._users[user_id])
                     else:
-                        logger.error(f"Failed to get team members for team {team_id} in project {project_id}: {response.text}")
+                        logger.error(
+                            f"Failed to get team members for team {team_id} in project {project_id}: {response.text}"
+                        )
             except Exception as e:
                 logger.error(f"Failed to get teams or team members for project {project_id}: {str(e)}")
+
+    def validate_sync_rule_source(self, source: SyncRuleSource) -> None:
+        raise ValueError("Usage as source is currently not supported by this provider.")
 
     def get_user_by_id(self, user_id: str) -> Optional[AzureUser]:
         return self._users.get(user_id)
@@ -104,18 +121,29 @@ class AzureDevOpsProvider:
     def get_project_by_id(self, project_id: str) -> Optional[AzureProject]:
         return self._projects.get(project_id)
 
-    def get_work_items(self, project_id: str, earliest_date: Optional[datetime] = None,
-                                     latest_date: Optional[datetime] = None, created_by: Optional[str] = None,
-                                     state: Optional[str] = None, assigned_to: Optional[str] = None) -> List[AzureWorkItem]:
+    async def get_data(self, item_type: str, query: SyncRuleQuery) -> List[Dict[str, Any]]:
+        return []
+
+    def get_work_items(
+        self,
+        project_id: str,
+        earliest_date: Optional[datetime] = None,
+        latest_date: Optional[datetime] = None,
+        created_by: Optional[str] = None,
+        state: Optional[str] = None,
+        assigned_to: Optional[str] = None,
+    ) -> List[AzureWorkItem]:
         """Retrieve all work items for a given project using the project's name and optional filters."""
         # Find the project name using the project ID
-        project_name = self._projects[project_id]['name'] if project_id in self._projects else None
+        project_name = self._projects[project_id]["name"] if project_id in self._projects else None
         if not project_name:
             logger.error(f"Project with ID {project_id} not found.")
             return []
 
         # Build the WIQL query dynamically based on provided parameters
-        query_parts = [f"Select [Id], [Title], [State] From WorkItems Where [System.TeamProject] = '{project_name}'"]
+        query_parts = [
+            f"Select [Id], [Title], [State] From WorkItems Where [System.TeamProject] = '{project_name}'"  # nosec B206
+        ]
         if earliest_date:
             query_parts.append(f"And [System.CreatedDate] >= '{earliest_date.strftime('%Y-%m-%d')}'")
         if latest_date:
@@ -140,19 +168,3 @@ class AzureDevOpsProvider:
 
     async def teardown(self) -> None:
         pass
-
-
-# Example usage:
-if __name__ == "__main__":
-    provider = AzureDevOpsProvider(organization_url="https://dev.azure.com/detectomat-pu",
-                                   personal_access_token="v7ke2bfdrc2rwqequb754z2wzrwmpimc2zsabu2exshchfbqv7ha")
-
-    import asyncio
-    asyncio.run(provider.init())
-    # Example of retrieving work items for a specific project
-    project_id = "27adbf7c-82a2-4ba7-8cbd-8510ec4bbd41"
-    work_items = provider.get_work_items(project_id=project_id,
-                                         earliest_date=datetime(2024, 4,1,1,1,1,1),
-                                         latest_date=datetime(2024, 7,1,1,1,1,1),
-                                         state="Done",
-                                         )

@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from sync_tool.core.sync.sync_rule import SyncRuleQuery, SyncRuleSource
 
@@ -59,7 +59,7 @@ class ProviderBase(metaclass=ABCMeta):
         raise NotImplementedError()
 
     @abstractmethod
-    async def get_data(self, item_type: str, query: SyncRuleQuery) -> Any:
+    async def get_data(self, item_type: str, query: SyncRuleQuery) -> List[Dict[str, Any]]:
         """Get data from the provider.
 
         Will be called to get data from the provider.

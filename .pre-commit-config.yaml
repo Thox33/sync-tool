@@ -27,7 +27,7 @@ repos:
     hooks:
       - id: mypy
         exclude: ^docs/
-        additional_dependencies: [ pydantic ]
+        additional_dependencies: [ pydantic, types-requests ]
   - repo: https://github.com/PyCQA/isort
     rev: 5.13.2
     hooks:
