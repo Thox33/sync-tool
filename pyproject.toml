@@ -11,6 +11,7 @@ sync-tool = "sync_tool.cli:cli"
 
 [tool.poetry.plugins."sync.tool.provider"]
 sync-tool-provider-jama = "sync_tool.providers.jama:JamaProvider"
+sync-tool-provider-azure-devops = "sync_tool.providers.azure_dev_ops:AzureDevOpsProvider"
 sync-tool-provider-testing = "sync_tool.providers.testing:TestingProvider"
 
 [tool.poetry.extras]

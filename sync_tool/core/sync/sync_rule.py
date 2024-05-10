@@ -19,6 +19,13 @@ class SyncRuleDestination(BaseModel):
     type: str
     query: Optional[SyncRuleQuery] = None
 
+    @field_validator("type")
+    @classmethod
+    def validate_type_contains_colon(cls, value: str) -> str:
+        if ":" not in value:
+            raise ValueError("Type must contain a colon. Format: 'internal_type:item_type'")
+        return value
+
 
 class SyncRule(BaseModel):
     source: SyncRuleSource
@@ -37,3 +44,17 @@ class SyncRule(BaseModel):
             provider.validate_sync_rule_source(source)
 
         return source
+
+    @field_validator("destination")
+    @classmethod
+    def validate_destination(cls, destination: SyncRuleSource, info: ValidationInfo) -> SyncRuleSource:
+        if info.context is not None and "providers" in info.context:
+            # This is the second time configuration validation.
+            # Providers are initialized and provided in context.
+            # Type: Dict[provider_name, ProviderBase]
+            provider = info.context["providers"].get(destination.provider)
+            if provider is None:
+                raise ValueError(f"Could not resolve provider '{destination.provider}'.")
+            provider.validate_sync_rule_destination(destination)
+
+        return destination

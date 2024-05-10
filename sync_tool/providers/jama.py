@@ -6,7 +6,7 @@ from py_jama_rest_client.core import CoreException, py_jama_rest_client_logger
 from pydantic import BaseModel
 
 from sync_tool.core.provider.provider_base import ProviderBase
-from sync_tool.core.sync.sync_rule import SyncRuleQuery, SyncRuleSource
+from sync_tool.core.sync.sync_rule import SyncRuleDestination, SyncRuleQuery, SyncRuleSource
 
 logger = structlog.getLogger(__name__)
 
@@ -144,6 +144,9 @@ class JamaProvider(ProviderBase):
                     self._get_release(release_id)
                 except ResourceNotFoundException:
                     raise ValueError(f"release {release_id} not found")
+
+    def validate_sync_rule_destination(self, destination: SyncRuleDestination) -> None:
+        raise ValueError("Usage as destination is currently not supported by this provider.")
 
     def _get_release(self, release_id: str) -> Dict[str, Any]:
         """

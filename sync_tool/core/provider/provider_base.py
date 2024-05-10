@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from typing import Any, Dict, List, Optional
 
-from sync_tool.core.sync.sync_rule import SyncRuleQuery, SyncRuleSource
+from sync_tool.core.sync.sync_rule import SyncRuleDestination, SyncRuleQuery, SyncRuleSource
 
 
 class ProviderBase(metaclass=ABCMeta):
@@ -55,6 +55,20 @@ class ProviderBase(metaclass=ABCMeta):
 
         Raises:
             ValueError: If the source is invalid.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def validate_sync_rule_destination(self, destination: SyncRuleDestination) -> None:
+        """Validate the destination of a sync rule.
+
+        Will be called when a sync rule is loaded to validate the destination.
+
+        Args:
+            destination: The destination to validate.
+
+        Raises:
+            ValueError: If the destination is invalid.
         """
         raise NotImplementedError()
 

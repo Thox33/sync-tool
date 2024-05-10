@@ -11,7 +11,7 @@ from msrest.authentication import BasicAuthentication
 from pydantic import BaseModel
 
 from sync_tool.core.provider.provider_base import ProviderBase
-from sync_tool.core.sync.sync_rule import SyncRuleQuery, SyncRuleSource
+from sync_tool.core.sync.sync_rule import SyncRuleDestination, SyncRuleQuery, SyncRuleSource
 
 logger = structlog.getLogger(__name__)
 
@@ -27,6 +27,9 @@ class AzureDevOpsConfig(BaseModel):
 
 class AzureDevOpsProvider(ProviderBase):
     """Azure DevOps API wrapper used for fetching and updating data from Azure DevOps."""
+
+    _supported_internal_types = ["items"]
+    _supported_item_types = ["Feature"]
 
     _config: AzureDevOpsConfig
     _connection: Connection
@@ -114,6 +117,17 @@ class AzureDevOpsProvider(ProviderBase):
 
     def validate_sync_rule_source(self, source: SyncRuleSource) -> None:
         raise ValueError("Usage as source is currently not supported by this provider.")
+
+    def validate_sync_rule_destination(self, destination: SyncRuleDestination) -> None:
+        if destination.type == "":
+            raise ValueError("destination type has to be specified")
+
+        # Destination type is a concatenation of the internal type and the item type (e.g. "item:Feature")
+        internal_type, item_type = destination.type.split(":")
+        if internal_type not in self._supported_internal_types:
+            raise ValueError(f"destination internal type {internal_type} is not supported")
+        if item_type not in self._supported_item_types:
+            raise ValueError(f"destination item type {item_type} is not supported")
 
     def get_user_by_id(self, user_id: str) -> Optional[AzureUser]:
         return self._users.get(user_id)

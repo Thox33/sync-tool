@@ -127,7 +127,7 @@
       "provider": "sync-tool-provider-azure-devops",
       "options": {
         "organization_url": "https://dev.azure.com/detectomat-pu",
-        "personal_access_token": "env(DET_PERSONAL_ACCESS_TOKEN)"
+        "personal_access_token": "env(DET_ADO_PERSONAL_ACCESS_TOKEN)"
       }
     }
   },
@@ -157,7 +157,7 @@
           },
           "destination": {
             "provider": "<other_provider_name>",
-            "type": "<type_name>"
+            "type": "<type_name>:<item_type>"
           }
         }
       }
