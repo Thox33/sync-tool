@@ -157,7 +157,13 @@
           },
           "destination": {
             "provider": "<other_provider_name>",
-            "type": "<type_name>:<item_type>"
+            "type": "<type_name>:<item_type>",
+            "query": {
+              "filter": {
+                "project": "<project>",
+                "itemId": "<itemId>"
+              }
+            }
           }
         }
       }

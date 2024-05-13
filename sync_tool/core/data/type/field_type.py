@@ -14,7 +14,7 @@ class FieldType(BaseModel, Generic[ValueT], metaclass=ABCMeta):
 
     name: str
     type: Any
-    default: Optional[ValueT] = None
+    default: Optional[Any] = None
 
     @abstractmethod
     def validate_value(

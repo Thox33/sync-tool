@@ -129,6 +129,35 @@ class AzureDevOpsProvider(ProviderBase):
         if item_type not in self._supported_item_types:
             raise ValueError(f"destination item type {item_type} is not supported")
 
+        # The destination should contain an valid query to find a correct parent to create the synced items
+        if not destination.query:
+            raise ValueError("destination query has to be specified")
+
+        dest_query = destination.query
+        if not dest_query.filter:
+            raise ValueError("destination query has to contain a filter")
+
+        project = dest_query.filter.get("project")
+        itemId = dest_query.filter.get("itemId")
+
+        if not project:
+            raise ValueError("destination query has to contain a project")
+        if not itemId:
+            raise ValueError("destination query has to contain an itemId")
+
+        if project not in self._projects:
+            raise ValueError(f"destination query project {project} not found")
+
+        if itemId and not project:
+            raise ValueError("destination query has to contain a project if provided an itemId")
+
+        if itemId and project:
+            work_items = self.get_work_items(project_id=project, item_id=itemId)
+            if not work_items:
+                raise ValueError(f"destination query item {itemId} not found in project {project}")
+            if len(work_items) > 1:
+                raise ValueError(f"destination query item {itemId} found multiple times in project {project}")
+
     def get_user_by_id(self, user_id: str) -> Optional[AzureUser]:
         return self._users.get(user_id)
 
@@ -141,6 +170,7 @@ class AzureDevOpsProvider(ProviderBase):
     def get_work_items(
         self,
         project_id: str,
+        item_id: Optional[str] = None,
         earliest_date: Optional[datetime] = None,
         latest_date: Optional[datetime] = None,
         created_by: Optional[str] = None,
@@ -158,6 +188,8 @@ class AzureDevOpsProvider(ProviderBase):
         query_parts = [
             f"Select [Id], [Title], [State] From WorkItems Where [System.TeamProject] = '{project_name}'"  # nosec B206
         ]
+        if item_id:
+            query_parts.append(f"And [Id] = '{item_id}'")
         if earliest_date:
             query_parts.append(f"And [System.CreatedDate] >= '{earliest_date.strftime('%Y-%m-%d')}'")
         if latest_date:
@@ -172,7 +204,6 @@ class AzureDevOpsProvider(ProviderBase):
         wiql_query = Wiql(query=" ".join(query_parts))
         try:
             query_result = self._work_item_client.query_by_wiql(wiql_query)
-            print(self._work_item_client.get_work_item(query_result.work_items[1].id).fields)
             all_work_items = [self._work_item_client.get_work_item(wi.id).fields for wi in query_result.work_items]
             logger.debug(f"Retrieved {len(all_work_items)} work items for project {project_name}.")
             return all_work_items
