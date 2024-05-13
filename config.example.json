@@ -79,9 +79,9 @@
             "project": "project",
             "name": "fields.name",
             "description": "fields.description",
-            "createdAt": "createdAt",
+            "createdAt": "createdDate",
             "createdBy": "createdBy",
-            "modifiedAt": "modifiedAt",
+            "modifiedAt": "modifiedDate",
             "modifiedBy": "modifiedBy"
           }
         }
@@ -102,13 +102,13 @@
         "items": {
           "fields": {
             "id": "id",
-            "project": "System.TeamProject",
-            "name": "System.Title",
+            "project": "[System.TeamProject]",
+            "name": "[System.Title]",
             "description": "fields.description",
-            "createdAt": "System.CreatedDate",
-            "createdBy": "System.CreatedBy",
-            "modifiedAt": "System.ChangedDate",
-            "modifiedBy": "System.ChangedBy"
+            "createdAt": "[System.CreatedDate]",
+            "createdBy": "[System.CreatedBy]",
+            "modifiedAt": "[System.ChangedDate]",
+            "modifiedBy": "[System.ChangedBy]"
           }
         }
       }

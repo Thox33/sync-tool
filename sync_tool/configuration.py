@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from sync_tool.contants import CONFIGURATION_FILE_NAME
 from sync_tool.core.data.data_configuration import DataConfiguration
+from sync_tool.core.data.mapping.mapping_provider import MappingProvider
 from sync_tool.core.provider.provider_base import ProviderBase
 from sync_tool.core.provider.provider_configuration import ProviderConfiguration
 from sync_tool.core.sync.sync_configuration import SyncConfiguration
@@ -43,17 +44,17 @@ class Configuration(BaseModel):
 
         return providers
 
-    def get_sync(self, sync_name: str) -> SyncConfiguration | None:
-        """Get the sync configuration for a given sync name.
+    def get_mapping_provider(self, mapping_name: str) -> MappingProvider | None:
+        """Get the mapping provider for a given mapping name.
 
         Args:
-            sync_name (str): Name of the sync configuration to get.
+            mapping_name (str): Name of the mapping provider to get.
 
         Returns:
-            SyncConfiguration: The sync configuration.
-            None: If the sync configuration does not exist.
+            MappingProvider: The mapping provider.
+            None: If the mapping provider does not exist.
         """
-        return self.sync.get(sync_name)
+        return self.data.mappings.get(mapping_name)
 
     def get_provider(self, provider_name: str) -> ProviderConfiguration | None:
         """Get the provider configuration for a given provider name.
@@ -66,6 +67,18 @@ class Configuration(BaseModel):
             None: If the provider configuration does not exist.
         """
         return self.providers.get(provider_name)
+
+    def get_sync(self, sync_name: str) -> SyncConfiguration | None:
+        """Get the sync configuration for a given sync name.
+
+        Args:
+            sync_name (str): Name of the sync configuration to get.
+
+        Returns:
+            SyncConfiguration: The sync configuration.
+            None: If the sync configuration does not exist.
+        """
+        return self.sync.get(sync_name)
 
 
 def load_configuration(config_path: str = CONFIGURATION_FILE_NAME) -> Configuration:

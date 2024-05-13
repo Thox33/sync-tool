@@ -12,7 +12,6 @@ def get_field_data_by_path(data: Dict[str, Any], path: str) -> Any:
     try:
         concat_key = ""  # This will be used to store the key with dots inside of it
         for key in keys:
-            print(key, concat_key)
             if "[" in key and "]" not in key:
                 concat_key += key + "."
                 continue

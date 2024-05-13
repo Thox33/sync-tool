@@ -13,7 +13,7 @@ class MappingProvider(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_and_Convert_mappings(cls, data: Any) -> Any:
+    def validate_and_convert_mappings(cls, data: Any) -> Any:
         """Validates and converts the mappings to the correct format."""
 
         if "mappings" not in data:
