@@ -1,7 +1,8 @@
 from datetime import datetime
 
 from sync_tool.core.data.type.field_type import (
-    FieldTypeNumber,
+    FieldTypeInt,
+    FieldTypeFloat,
     FieldTypeString,
     FieldTypeDatetime,
     FieldTypeReference,
@@ -12,7 +13,8 @@ from sync_tool.core.data.type.internal_type import create_internal_type
 def test_create_internal_type():
     name = "test"
     fields = {
-        "field1": {"type": "number"},
+        "field1": {"type": "int"},
+        "field5": {"type": "float"},
         "field2": {"type": "string", "default": "test"},
         "field3": {"type": "datetime"},
         "field4": {"type": "reference", "reference_type": "test2"},
@@ -22,17 +24,19 @@ def test_create_internal_type():
     internal_type = create_internal_type(name, fields, possible_other_types)
 
     assert internal_type.name == name
-    assert len(internal_type.fields) == 4
-    assert isinstance(internal_type.fields[0], FieldTypeNumber)
+    assert len(internal_type.fields) == 5
+    assert isinstance(internal_type.fields[0], FieldTypeInt)
     assert internal_type.fields[0].name == "field1"
-    assert isinstance(internal_type.fields[1], FieldTypeString)
-    assert internal_type.fields[1].name == "field2"
-    assert internal_type.fields[1].default == "test"
-    assert isinstance(internal_type.fields[2], FieldTypeDatetime)
-    assert internal_type.fields[2].name == "field3"
-    assert isinstance(internal_type.fields[3], FieldTypeReference)
-    assert internal_type.fields[3].name == "field4"
-    assert internal_type.fields[3].reference_type == "test2"
+    assert isinstance(internal_type.fields[1], FieldTypeFloat)
+    assert internal_type.fields[1].name == "field5"
+    assert isinstance(internal_type.fields[2], FieldTypeString)
+    assert internal_type.fields[2].name == "field2"
+    assert internal_type.fields[2].default == "test"
+    assert isinstance(internal_type.fields[3], FieldTypeDatetime)
+    assert internal_type.fields[3].name == "field3"
+    assert isinstance(internal_type.fields[4], FieldTypeReference)
+    assert internal_type.fields[4].name == "field4"
+    assert internal_type.fields[4].reference_type == "test2"
 
 
 def test_create_internal_type_invalid_reference():
@@ -52,7 +56,7 @@ def test_create_internal_type_invalid_reference():
 def test_internal_type_store_data():
     name = "test"
     fields = {
-        "field1": {"type": "number"},
+        "field1": {"type": "int"},
         "field2": {"type": "string", "default": "test"},
         "field3": {"type": "datetime"},
         "field4": {"type": "reference", "reference_type": "test2"},
@@ -76,7 +80,7 @@ def test_internal_type_store_data():
 def test_internal_type_store_data_invalid():
     name = "test"
     fields = {
-        "field1": {"type": "number"},
+        "field1": {"type": "int"},
         "field2": {"type": "string", "default": "test"},
         "field3": {"type": "datetime"},
         "field4": {"type": "reference", "reference_type": "test2"},
@@ -102,4 +106,4 @@ def test_internal_type_store_data_invalid():
             " failed (1 sub-exception)"
         )
         assert len(e.exceptions) == 1
-        assert str(e.exceptions[0]) == "Field field3 value test is not a datetime"
+        assert str(e.exceptions[0]) == "Field field3 value test is not a datetime - or convertible to a datetime"

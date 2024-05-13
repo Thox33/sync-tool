@@ -1,4 +1,6 @@
+import asyncio
 import json
+from copy import deepcopy
 from pathlib import Path
 from typing import Dict
 
@@ -8,8 +10,10 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from sync_tool.contants import CONFIGURATION_FILE_NAME
 from sync_tool.core.data.data_configuration import DataConfiguration
+from sync_tool.core.data.mapping.mapping_provider import MappingProvider
 from sync_tool.core.provider.provider_base import ProviderBase
 from sync_tool.core.provider.provider_configuration import ProviderConfiguration
+from sync_tool.core.sync.sync_configuration import SyncConfiguration
 
 logger = structlog.getLogger(__name__)
 
@@ -28,6 +32,9 @@ class Configuration(BaseModel):
     # Provider configuration
     providers: Dict[str, ProviderConfiguration] = Field(default_factory=dict)  # Dict key is the provider name
 
+    # Sync configuration
+    sync: Dict[str, SyncConfiguration] = Field(default_factory=dict)  # Dict key is the sync name
+
     @field_validator("providers")
     @classmethod
     def validate_providers(cls, providers: Dict[str, ProviderConfiguration]) -> Dict[str, ProviderConfiguration]:
@@ -37,9 +44,47 @@ class Configuration(BaseModel):
 
         return providers
 
+    def get_mapping_provider(self, mapping_name: str) -> MappingProvider | None:
+        """Get the mapping provider for a given mapping name.
+
+        Args:
+            mapping_name (str): Name of the mapping provider to get.
+
+        Returns:
+            MappingProvider: The mapping provider.
+            None: If the mapping provider does not exist.
+        """
+        return self.data.mappings.get(mapping_name)
+
+    def get_provider(self, provider_name: str) -> ProviderConfiguration | None:
+        """Get the provider configuration for a given provider name.
+
+        Args:
+            provider_name (str): Name of the provider configuration to get.
+
+        Returns:
+            ProviderConfiguration: The provider configuration.
+            None: If the provider configuration does not exist.
+        """
+        return self.providers.get(provider_name)
+
+    def get_sync(self, sync_name: str) -> SyncConfiguration | None:
+        """Get the sync configuration for a given sync name.
+
+        Args:
+            sync_name (str): Name of the sync configuration to get.
+
+        Returns:
+            SyncConfiguration: The sync configuration.
+            None: If the sync configuration does not exist.
+        """
+        return self.sync.get(sync_name)
+
 
 def load_configuration(config_path: str = CONFIGURATION_FILE_NAME) -> Configuration:
-    """Loads the configuration from a file.
+    """Loads the configuration from a file. Validates the configuration twice.
+    First without initialized provider in context.
+    Second time with initialized provider in context. This is necessary to validate the sync rules.
 
     Args:
         config_path (str): Path to the configuration file. Defaults to "config.json".
@@ -65,4 +110,14 @@ def load_configuration(config_path: str = CONFIGURATION_FILE_NAME) -> Configurat
     # Load the configuration from file
     logger.debug(f"Loading configuration from {configuration_path}")
     data = json.loads(configuration_path.read_text(encoding="utf-8"))
-    return Configuration(**data)
+    config = Configuration(**deepcopy(data))
+
+    # Validate the configuration a second time with an dict of initialized providers
+    providers = {provider_name: provider.make_instance() for provider_name, provider in config.providers.items()}
+    for provider in providers.values():
+        asyncio.run(provider.init())
+    Configuration.model_validate(
+        obj=deepcopy(data), strict=True, from_attributes=False, context={"providers": providers}
+    )
+
+    return config

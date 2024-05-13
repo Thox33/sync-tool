@@ -79,9 +79,9 @@
             "project": "project",
             "name": "fields.name",
             "description": "fields.description",
-            "createdAt": "createdAt",
+            "createdAt": "createdDate",
             "createdBy": "createdBy",
-            "modifiedAt": "modifiedAt",
+            "modifiedAt": "modifiedDate",
             "modifiedBy": "modifiedBy"
           }
         }
@@ -102,20 +102,20 @@
         "items": {
           "fields": {
             "id": "id",
-            "project": "System.TeamProject",
-            "name": "System.Title",
+            "project": "[System.TeamProject]",
+            "name": "[System.Title]",
             "description": "fields.description",
-            "createdAt": "System.CreatedDate",
-            "createdBy": "System.CreatedBy",
-            "modifiedAt": "System.ChangedDate",
-            "modifiedBy": "System.ChangedBy"
+            "createdAt": "[System.CreatedDate]",
+            "createdBy": "[System.CreatedBy]",
+            "modifiedAt": "[System.ChangedDate]",
+            "modifiedBy": "[System.ChangedBy]"
           }
         }
       }
     }
   },
   "providers": {
-    "det-jama": {
+    "<provider_name>": {
       "provider": "sync-tool-provider-jama",
       "options": {
         "url": "https://detectomat-prod.jamacloud.com",
@@ -123,11 +123,43 @@
         "clientSecret": "env(DET_JAMA_CLIENT_SECRET)"
       }
     },
-    "azure-devops": {
+    "<other_provider_name>": {
       "provider": "sync-tool-provider-azure-devops",
       "options": {
         "organization_url": "https://dev.azure.com/detectomat-pu",
-        "personal_access_token": "env(PERSONAL_ACCESS_TOKEN)"
+        "personal_access_token": "env(DET_ADO_PERSONAL_ACCESS_TOKEN)"
+      }
+    }
+  },
+  "sync": {
+    "<sync_name>": {
+      "rules": {
+        "<rule_name>": {
+          "source": {
+            "provider": "<provider_name>",
+            "type": "<type_name>",
+            "query": {
+              "filter": {
+                "project": [
+                  "<project>"
+                ],
+                "itemType": [
+                  "<itemType>"
+                ],
+                "documentKey": [
+                  "<documentKey>"
+                ],
+                "release": [
+                  "<release>"
+                ]
+              }
+            }
+          },
+          "destination": {
+            "provider": "<other_provider_name>",
+            "type": "<type_name>:<item_type>"
+          }
+        }
       }
     }
   }

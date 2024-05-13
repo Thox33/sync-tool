@@ -47,3 +47,14 @@ class DataConfiguration(BaseModel):
         data["mappings"] = mappings
 
         return data
+
+    def get_internal_type(self, name: str) -> InternalType | None:
+        """Get internal type by name.
+
+        Args:
+            name (str): Name of the internal type.
+
+        Returns:
+            InternalType: Internal type object.
+        """
+        return self.types.get(name)

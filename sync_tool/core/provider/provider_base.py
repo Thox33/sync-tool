@@ -1,5 +1,7 @@
 from abc import ABCMeta, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
+
+from sync_tool.core.sync.sync_rule import SyncRuleDestination, SyncRuleQuery, SyncRuleSource
 
 
 class ProviderBase(metaclass=ABCMeta):
@@ -39,6 +41,53 @@ class ProviderBase(metaclass=ABCMeta):
 
         Raises:
             ProviderInitError: If the initialization fails.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def validate_sync_rule_source(self, source: SyncRuleSource) -> None:
+        """Validate the source of a sync rule.
+
+        Will be called when a sync rule is loaded to validate the source.
+
+        Args:
+            source: The source to validate.
+
+        Raises:
+            ValueError: If the source is invalid.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def validate_sync_rule_destination(self, destination: SyncRuleDestination) -> None:
+        """Validate the destination of a sync rule.
+
+        Will be called when a sync rule is loaded to validate the destination.
+
+        Args:
+            destination: The destination to validate.
+
+        Raises:
+            ValueError: If the destination is invalid.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    async def get_data(self, item_type: str, query: SyncRuleQuery) -> List[Dict[str, Any]]:
+        """Get data from the provider.
+
+        Will be called to get data from the provider.
+
+        Args:
+            item_type: The source to get the data from.
+            query: The query to filter the data based on.
+
+        Returns:
+            List[Dict[str, Any]]: The data as list.
+
+        Raises:
+            ValueError: If the item_type is invalid or not supported by this provider.
+            ProviderGetDataError: If the data could not be retrieved.
         """
         raise NotImplementedError()
 
