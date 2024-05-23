@@ -32,13 +32,21 @@ class MappingProvider(BaseModel):
 
         return data
 
-    def map_raw_data(self, internal_type_name: str, raw_data: Dict[str, Any]) -> Dict[str, Any]:
+    def map_raw_data_to_internal_format(self, internal_type_name: str, raw_data: Dict[str, Any]) -> Dict[str, Any]:
         """Map raw data to internal type data."""
         mapping = self.mappings.get(internal_type_name)
         if not mapping:
             raise ValueError(f"Mapping for internal type '{internal_type_name}' not found.")
 
-        return mapping.map_raw_data(raw_data)
+        return mapping.map_from_raw_data(raw_data)
+
+    def map_internal_data_to_raw_format(self, internal_type_name: str, internal_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Map internal type data to raw data."""
+        mapping = self.mappings.get(internal_type_name)
+        if not mapping:
+            raise ValueError(f"Mapping for internal type '{internal_type_name}' not found.")
+
+        return mapping.map_to_raw_data(internal_data)
 
 
 def create_mapping_provider(

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 import requests
 import structlog
@@ -10,6 +10,7 @@ from azure.devops.v7_0.work_item_tracking.work_item_tracking_client import WorkI
 from msrest.authentication import BasicAuthentication
 from pydantic import BaseModel
 
+from sync_tool.core.data.type.field_type import RichTextValue
 from sync_tool.core.provider.provider_base import ProviderBase
 from sync_tool.core.sync.sync_rule import SyncRuleDestination, SyncRuleQuery, SyncRuleSource
 
@@ -23,6 +24,52 @@ AzureWorkItem = Dict[str, Any]
 class AzureDevOpsConfig(BaseModel):
     organization_url: str
     personal_access_token: str
+
+
+def flatten_dict(d: Dict[str, Any], parent_key: str = "", sep: str = ".") -> Dict[str, Any]:
+    items: List[Tuple[str, Any] | Dict[str, Any]] = []
+    for k, v in d.items():
+        new_key = parent_key + sep + k if parent_key else k
+        if isinstance(v, Dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(cast(List[Tuple[str, Any]], items))
+
+
+"""Create workitem
+
+[
+{
+    "op": "add",
+    "path": "/fields/System.Title",
+    "value": "Test"
+},
+{
+    "op": "add",
+    "path": "/fields/System.Description",
+    "value": "Test description"
+},
+{
+    "op": "add",
+    "path": "/relations/-",
+    "value": {
+        "rel": "System.LinkTypes.Hierarchy-Reverse",
+        "url": "https://dev.azure.com/organization/project/_apis/wit/workItems/1"
+    }
+}
+"""
+
+"""Update workitem
+
+[
+{
+    "op": "replace",
+    "path": "/fields/System.Title",
+    "value": "Test"
+}
+]
+"""
 
 
 class AzureDevOpsProvider(ProviderBase):
@@ -92,6 +139,7 @@ class AzureDevOpsProvider(ProviderBase):
                     members_url = (
                         f"{self._config.organization_url}/_apis/projects/"
                         f"{project_id}/teams/{team_id}/members?api-version=6.0"
+                        # This should be the same version as the python client
                     )
                     response = requests.get(members_url, auth=("", self._config.personal_access_token), timeout=10)
 
@@ -116,9 +164,27 @@ class AzureDevOpsProvider(ProviderBase):
                 logger.error(f"Failed to get teams or team members for project {project_id}: {str(e)}")
 
     def validate_sync_rule_source(self, source: SyncRuleSource) -> None:
+        """Validates the source of a sync rule that it at least should contain project (array),
+        itemType (array), documentKey (array) or release (array). Multiple values are allowed.
+
+        Args:
+            source: The source to validate.
+
+        Raises:
+            ValueError: If the source is invalid.
+        """
         raise ValueError("Usage as source is currently not supported by this provider.")
 
     def validate_sync_rule_destination(self, destination: SyncRuleDestination) -> None:
+        """Validates the destination of a sync rule that it contains a valid type and query.
+
+        Args:
+            destination: The destination to validate.
+
+        Raises:
+            ValueError: If the destination is invalid.
+        """
+
         if destination.type == "":
             raise ValueError("destination type has to be specified")
 
@@ -138,25 +204,25 @@ class AzureDevOpsProvider(ProviderBase):
             raise ValueError("destination query has to contain a filter")
 
         project = dest_query.filter.get("project")
-        itemId = dest_query.filter.get("itemId")
+        item_id = dest_query.filter.get("itemId")
 
         if not project:
             raise ValueError("destination query has to contain a project")
-        if not itemId:
+        if not item_id:
             raise ValueError("destination query has to contain an itemId")
 
         if project not in self._projects:
             raise ValueError(f"destination query project {project} not found")
 
-        if itemId and not project:
+        if item_id and not project:
             raise ValueError("destination query has to contain a project if provided an itemId")
 
-        if itemId and project:
-            work_items = self.get_work_items(project_id=project, item_id=itemId)
+        if item_id and project:
+            work_items = self.get_work_items(project_id=project, item_id=item_id)
             if not work_items:
-                raise ValueError(f"destination query item {itemId} not found in project {project}")
+                raise ValueError(f"destination query item {item_id} not found in project {project}")
             if len(work_items) > 1:
-                raise ValueError(f"destination query item {itemId} found multiple times in project {project}")
+                raise ValueError(f"destination query item {item_id} found multiple times in project {project}")
 
     def get_user_by_id(self, user_id: str) -> Optional[AzureUser]:
         return self._users.get(user_id)
@@ -166,6 +232,77 @@ class AzureDevOpsProvider(ProviderBase):
 
     async def get_data(self, item_type: str, query: SyncRuleQuery) -> List[Dict[str, Any]]:
         return []
+
+    async def create_data(
+        self, item_type: str, query: SyncRuleQuery, data: Dict[str, Any], dry_run: bool = False
+    ) -> None:
+        """
+        Create data in the provider. For the azure devops workitems we have to create an json patch document.
+        Which itself is an array of operations. As we create data in the destination we only have add operations.
+        We have to make sure to add the correct path for nested objects,
+        e.g. "/fields/System.Title".
+        Additionally we have to add the workitem as child to the destination query workitem.
+
+        Args:
+            item_type: The internal type of data inside of data and the item type to create, e.g. "items:Feature"
+            query: The destination query from the configuration of the sync rule
+            data: Plain object; already run through the transformation and mapping to be in the right format
+            dry_run: If True, the data will not be created but the operation will be logged
+        """
+        # Destination type is a concatenation of the internal type and the item type (e.g. "item:Feature")
+        internal_type, work_item_type = item_type.split(":")
+
+        # Get the project id
+        project_id = query.filter["project"]
+        if not project_id:
+            raise ValueError("project has to be provided")
+
+        # Get the destination work item
+        item_id = query.filter["itemId"]
+        parent_work_item_url = f"{self._config.organization_url}/_apis/wit/workitems/{item_id}"
+        if item_id:
+            logger.debug("Destination work item", parent_work_item_url=parent_work_item_url)
+        else:
+            logger.error("No parent relation will be created")
+
+        # Create the json patch document
+        patch_document = []
+        # data as to be flattened to be able to create the patch document
+        flat_data = flatten_dict(data, sep="/")
+        # Now we can create the patch document
+        for key, value in flat_data.items():
+            # We are not allowed to patch the work item id
+            if "id" in key:
+                continue
+            # example for key: fields/System.Title
+            correct_value = value
+            if isinstance(value, datetime):
+                correct_value = value.isoformat()
+            elif isinstance(value, RichTextValue):
+                # @TODO: For now we only use the string value without inline attachment handling
+                correct_value = value.value
+
+            patch_document.append({"op": "add", "path": f"/{key}", "value": correct_value})
+
+        if item_id:
+            patch_document.append(
+                {
+                    "op": "add",
+                    "path": "/relations/-",
+                    "value": {"rel": "System.LinkTypes.Hierarchy-Reverse", "url": parent_work_item_url},
+                }
+            )
+        logger.debug("Patch document", patch_document=patch_document)
+
+        # Create the work item
+        if not dry_run:
+            work_item = self._work_item_client.create_work_item(
+                document=patch_document,
+                project=project_id,
+                type=work_item_type,
+                bypass_rules=True,  # Needed to create as another user and also set the correct dates
+            )
+            logger.debug("Created work item", work_item_id=work_item.id, work_item=work_item)
 
     def get_work_items(
         self,

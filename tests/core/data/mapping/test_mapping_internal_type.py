@@ -3,16 +3,28 @@ from typing import Dict
 from sync_tool.core.data.mapping.mapping_internal_type import MappingInternalType, create_mapping_internal_type
 
 
-def test_map_raw_data():
+def test_map_to_raw_data():
     # Arrange
     mapping = MappingInternalType(internal_type_name="User", fields={"name": "user.name", "age": "user.age"})
     raw_data = {"user": {"name": "John Doe", "age": 30}}
 
     # Act
-    mapped_data = mapping.map_raw_data(raw_data)
+    mapped_data = mapping.map_from_raw_data(raw_data)
 
     # Assert
     assert mapped_data == {"name": "John Doe", "age": 30}
+
+
+def test_map_from_raw_data():
+    # Arrange
+    mapping = MappingInternalType(internal_type_name="User", fields={"name": "user.name", "age": "user.age"})
+    internal_data = {"name": "John Doe", "age": 30}
+
+    # Act
+    mapped_data = mapping.map_to_raw_data(internal_data)
+
+    # Assert
+    assert mapped_data == {"user": {"name": "John Doe", "age": 30}}
 
 
 def test_create_mapping_internal_type():

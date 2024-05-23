@@ -32,7 +32,7 @@ def test_map_raw_data_valid():
         mappings={"test_internal_type": {"fields": {"field1": "field1", "field2": "field2.data"}}},
     )
     raw_data = {"field1": "value1", "field2": {"data": "value2"}}
-    result = mapping.map_raw_data("test_internal_type", raw_data)
+    result = mapping.map_raw_data_to_internal_format("test_internal_type", raw_data)
     assert result == {"field1": "value1", "field2": "value2"}
 
 
@@ -44,7 +44,7 @@ def test_map_raw_data_invalid_internal_type():
     )
     raw_data = {"key": "value"}
     with pytest.raises(ValueError):
-        mapping.map_raw_data("invalid_internal_type", raw_data)
+        mapping.map_raw_data_to_internal_format("invalid_internal_type", raw_data)
 
 
 def test_map_raw_data_no_mapping():
@@ -52,7 +52,7 @@ def test_map_raw_data_no_mapping():
     mapping = MappingProvider(provider_name="test_provider", mappings={})
     raw_data = {"key": "value"}
     with pytest.raises(ValueError):
-        mapping.map_raw_data("test_internal_type", raw_data)
+        mapping.map_raw_data_to_internal_format("test_internal_type", raw_data)
 
 
 def test_create_mapping_provider_with_valid_data():

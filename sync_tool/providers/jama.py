@@ -24,6 +24,8 @@ class JamaProviderConfig(BaseModel):
 class JamaProvider(ProviderBase):
     """Jama API wrapper used for fetching and updating data from Jama."""
 
+    _supported_internal_types = ["items"]
+
     _config: JamaProviderConfig
     _client: JamaClient
 
@@ -92,6 +94,11 @@ class JamaProvider(ProviderBase):
             ValueError: If the source is invalid.
         """
 
+        # Validate sync rule type
+        if source.type not in self._supported_internal_types:
+            raise ValueError(f"source type {source.type} not supported by this provider")
+
+        # Validate query filter
         query_filter = source.query.filter
 
         if (
@@ -181,6 +188,8 @@ class JamaProvider(ProviderBase):
 
         Will be called to get data from the provider.
 
+        TODO: As we currently only support items as source we have put everything here. Later on we should split this
+
         Args:
             item_type: The source to get the data from.
             query: The query to filter the data based on.
@@ -222,6 +231,11 @@ class JamaProvider(ProviderBase):
         )
 
         return items
+
+    async def create_data(
+        self, item_type: str, query: SyncRuleQuery, data: Dict[str, Any], dry_run: bool = False
+    ) -> None:
+        raise ValueError("Usage as destination is currently not supported by this provider.")
 
     async def teardown(self) -> None:
         pass
