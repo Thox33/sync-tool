@@ -1,4 +1,6 @@
-from sync_tool.core.data.mapping.mapping_helper import get_field_data_by_path
+import pytest
+
+from sync_tool.core.data.mapping.mapping_helper import get_field_data_by_path, add_field_data_by_path
 
 
 def test_get_field_data_by_path_simple_dict():
@@ -99,3 +101,69 @@ def test_get_field_data_by_path_with_real_data():
     }
     path = "fields.name"
     assert get_field_data_by_path(data, path) == "Input definitions BBM in DPT for fiber optic converters"
+
+
+def test_add_field_data_by_path_non_dict_data():
+    # Given
+    path = "key1.key2"
+    value = "value"
+
+    # When
+    with pytest.raises(ValueError):
+        add_field_data_by_path(123, path, value)
+
+
+def test_add_field_data_by_path_non_existent_key():
+    # Given
+    data = {"key1": {"key2": "value1"}}
+    path = "key1.key3"
+    value = "value2"
+
+    # When
+    result = add_field_data_by_path(data, path, value)
+
+    # Then
+    expected_result = {"key1": {"key2": "value1", "key3": "value2"}}
+    assert result == expected_result
+
+
+def test_add_field_data_by_path_existing_key():
+    # Given
+    data = {"key1": {"key2": "value1"}}
+    path = "key1.key2"
+    value = "value2"
+
+    # When
+    result = add_field_data_by_path(data, path, value)
+
+    # Then
+    expected_result = {"key1": {"key2": "value2"}}
+    assert result == expected_result
+
+
+def test_add_field_data_by_path_key_with_dots():
+    # Given
+    data = {"key1": {"key2": "value1"}}
+    path = "key1.[key.dots]"
+    value = "value2"
+
+    # When
+    result = add_field_data_by_path(data, path, value)
+
+    # Then
+    expected_result = {"key1": {"key2": "value1", "key.dots": "value2"}}
+    assert result == expected_result
+
+
+def test_add_field_data_by_path_key_with_square_brackets():
+    # Given
+    data = {"key1": {"key2": "value1"}}
+    path = "key1.[key_with_brackets]"
+    value = "value2"
+
+    # When
+    result = add_field_data_by_path(data, path, value)
+
+    # Then
+    expected_result = {"key1": {"key2": "value1", "key_with_brackets": "value2"}}
+    assert result == expected_result

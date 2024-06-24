@@ -92,6 +92,22 @@ class ProviderBase(metaclass=ABCMeta):
         raise NotImplementedError()
 
     @abstractmethod
+    async def create_data(
+        self, item_type: str, query: SyncRuleQuery, data: Dict[str, Any], dry_run: bool = False
+    ) -> None:
+        """
+        Create data in the provider.
+        Additionally we have to add the workitem as child to the destination query workitem.
+
+        Args:
+            item_type: The internal type of data inside of data and the item type to create, e.g. "items:Feature"
+            query: The destination query from the configuration of the sync rule
+            data: Plain object; already run through the transformation and mapping to be in the right format
+            dry_run: If True, the data will not be created but the operation will be logged
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
     async def teardown(self) -> None:
         """Tear down the provider.
 

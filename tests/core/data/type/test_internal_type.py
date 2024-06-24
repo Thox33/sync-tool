@@ -106,4 +106,4 @@ def test_internal_type_store_data_invalid():
             " failed (1 sub-exception)"
         )
         assert len(e.exceptions) == 1
-        assert str(e.exceptions[0]) == "Field field3 value test is not a datetime - or convertible to a datetime"
+        assert str(e.exceptions[0]) == "Invalid isoformat string: 'test'"

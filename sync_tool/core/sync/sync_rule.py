@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from pydantic import BaseModel, field_validator
 from pydantic_core.core_schema import ValidationInfo
@@ -17,7 +17,7 @@ class SyncRuleSource(BaseModel):
 class SyncRuleDestination(BaseModel):
     provider: str
     type: str
-    query: Optional[SyncRuleQuery] = None
+    query: SyncRuleQuery
 
     @field_validator("type")
     @classmethod

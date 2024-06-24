@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from abc import ABCMeta, abstractmethod
 from datetime import datetime
 from typing import Any, Generic, Literal, Optional, TypeVar
@@ -115,7 +116,52 @@ class FieldTypeReference(FieldType[str]):
         return str(value)
 
 
-FieldTypes = FieldTypeInt | FieldTypeFloat | FieldTypeString | FieldTypeDatetime | FieldTypeReference
+class RichTextValue(BaseModel):
+    """Internal representation of a rich text value"""
+
+    value: str
+    attachments: Optional[list[str]] = (
+        None  # Found inside the rich text value. This is a list of the attachment url extracted from the html img tags.
+    )
+
+
+def filter_is_not_empty_string(value: str) -> bool:
+    """Check if the value is not an empty string"""
+    return value != ""
+
+
+def extract_attachments(value: str) -> list[str]:
+    """Extract attachments from the rich text value (html img) tag and store it as string list.
+
+    Example:
+        <img src="https://example.com/image.jpg" alt="image" />
+        attachment: https://example.com/image.jpg
+    """
+
+    regex = re.compile(r'<img.*?src="(.*?)".*?>', re.IGNORECASE)
+    return list(filter(filter_is_not_empty_string, regex.findall(value)))
+
+
+class FieldTypeRichText(FieldType[RichTextValue]):
+    """Internal representation of an rich text field of the internal type"""
+
+    type: Literal["richtext"]
+
+    def validate_value(self, value: Any, context: Optional[Any] = None) -> RichTextValue:
+        """Validate the value of the rich text field"""
+        if not isinstance(value, str):
+            raise ValueError(f"Field {self.name} value {value} is not a string")
+
+        rich_text_value = RichTextValue(value=value)
+        # Extract attachments from the value (html img) tag and store it as string list
+        rich_text_value.attachments = extract_attachments(value)
+
+        return rich_text_value
+
+
+FieldTypes = (
+    FieldTypeInt | FieldTypeFloat | FieldTypeString | FieldTypeDatetime | FieldTypeReference | FieldTypeRichText
+)
 
 
 def create_field_type(name: str, **kwargs: Any) -> FieldTypes:
@@ -141,4 +187,6 @@ def create_field_type(name: str, **kwargs: Any) -> FieldTypes:
         return FieldTypeDatetime(name=name, **kwargs)
     if kwargs["type"] == "reference":
         return FieldTypeReference(name=name, **kwargs)
+    if kwargs["type"] == "richtext":
+        return FieldTypeRichText(name=name, **kwargs)
     raise ValueError(f"Unknown field type: {kwargs['type']}")

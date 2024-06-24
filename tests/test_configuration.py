@@ -7,11 +7,13 @@ def test_configuration_default_values():
 
 
 def test_configuration_validates_providers():
-    Configuration(providers=[ProviderConfiguration(provider="sync-tool-provider-testing")])
+    Configuration(
+        providers={"sync-tool-provider-testing": ProviderConfiguration(provider="sync-tool-provider-testing")}
+    )
 
 
 def test_load_configuration(fs):
-    test_config = Configuration()
+    test_config = Configuration(data={"types": {}, "mappings": {}})
     fs.create_file("config.json", contents=test_config.model_dump_json())
 
-    assert test_config == load_configuration()
+    assert test_config == load_configuration(load_environment_file=False)

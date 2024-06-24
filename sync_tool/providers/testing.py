@@ -1,8 +1,9 @@
 """Should only be used inside testing"""
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from sync_tool.core.provider.provider_base import ProviderBase
+from sync_tool.core.sync.sync_rule import SyncRuleDestination, SyncRuleQuery, SyncRuleSource
 
 
 class TestingProvider(ProviderBase):
@@ -13,6 +14,20 @@ class TestingProvider(ProviderBase):
         pass
 
     async def init(self) -> None:
+        pass
+
+    def validate_sync_rule_source(self, source: SyncRuleSource) -> None:
+        pass
+
+    def validate_sync_rule_destination(self, destination: SyncRuleDestination) -> None:
+        pass
+
+    async def get_data(self, item_type: str, query: SyncRuleQuery) -> List[Dict[str, Any]]:
+        return []
+
+    async def create_data(
+        self, item_type: str, query: SyncRuleQuery, data: Dict[str, Any], dry_run: bool = False
+    ) -> None:
         pass
 
     async def teardown(self) -> None:

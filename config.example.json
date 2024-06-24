@@ -37,7 +37,7 @@
             "default": ""
           },
           "description": {
-            "type": "string",
+            "type": "richtext",
             "default": ""
           },
           "createdAt": {

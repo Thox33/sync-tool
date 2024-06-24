@@ -39,7 +39,7 @@ class InternalTypeStorage:
                 continue
 
             try:
-                field.validate_value(data[field.name])
+                data[field.name] = field.validate_value(data[field.name])
             except ValueError as e:
                 validation_exceptions.append(e)
 

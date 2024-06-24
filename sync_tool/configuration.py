@@ -81,7 +81,7 @@ class Configuration(BaseModel):
         return self.sync.get(sync_name)
 
 
-def load_configuration(config_path: str = CONFIGURATION_FILE_NAME) -> Configuration:
+def load_configuration(config_path: str = CONFIGURATION_FILE_NAME, load_environment_file: bool = True) -> Configuration:
     """Loads the configuration from a file. Validates the configuration twice.
     First without initialized provider in context.
     Second time with initialized provider in context. This is necessary to validate the sync rules.
@@ -100,7 +100,10 @@ def load_configuration(config_path: str = CONFIGURATION_FILE_NAME) -> Configurat
     configuration_path = Path(config_path)
 
     # Load environment variables from .env file
-    load_dotenv()
+    if (
+        load_environment_file
+    ):  # This is only for testing purposes as we got an filesystem error while searching for the .env file
+        load_dotenv()
 
     # Check if we need to create a new configuration file
     if not configuration_path.exists():
