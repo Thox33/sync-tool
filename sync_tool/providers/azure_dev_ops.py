@@ -76,7 +76,7 @@ class AzureDevOpsProvider(ProviderBase):
     """Azure DevOps API wrapper used for fetching and updating data from Azure DevOps."""
 
     _supported_internal_types = ["items"]
-    _supported_item_types = ["Feature"]
+    _supported_item_types = ["Feature", "User Story"]
 
     _config: AzureDevOpsConfig
     _connection: Connection
@@ -173,7 +173,32 @@ class AzureDevOpsProvider(ProviderBase):
         Raises:
             ValueError: If the source is invalid.
         """
-        raise ValueError("Usage as source is currently not supported by this provider.")
+
+        # Validate sync rule type
+        if source.type not in self._supported_internal_types:
+            raise ValueError(f"source type {source.type} not supported by this provider")
+
+        # Validate query filter
+        query_filter = source.query.filter
+
+        if "project" not in query_filter:
+            raise ValueError("source has to contain project")
+
+        if "project" in query_filter and not isinstance(query_filter["project"], str):
+            raise ValueError("project has to be a string")
+
+        if "itemType" in query_filter and not isinstance(query_filter["itemType"], list):
+            raise ValueError("itemType has to be a list")
+
+        if "project" in query_filter:
+            for project_id in query_filter["project"]:
+                if self.get_project_by_id(project_id=project_id) is None:
+                    raise ValueError(f"project {project_id} not found")
+
+        if "itemType" in query_filter:
+            for item_type in query_filter["itemType"]:
+                if item_type not in self._supported_item_types:
+                    raise ValueError(f"itemType {item_type} not supported")
 
     def validate_sync_rule_destination(self, destination: SyncRuleDestination) -> None:
         """Validates the destination of a sync rule that it contains a valid type and query.
@@ -231,7 +256,34 @@ class AzureDevOpsProvider(ProviderBase):
         return self._projects.get(project_id)
 
     async def get_data(self, item_type: str, query: SyncRuleQuery) -> List[Dict[str, Any]]:
-        return []
+        """Get data from the provider.
+
+        Will be called to get data from the provider.
+
+        TODO: As we currently only support items as source we have put everything here. Later on we should split this
+
+        Args:
+            item_type: The source to get the data from.
+            query: The query to filter the data based on.
+
+        Returns:
+            List[Dict[str, Any]]: The data as list.
+
+        Raises:
+            ValueError: If the item_type is invalid or not supported by this provider.
+            ProviderGetDataError: If the data could not be retrieved.
+        """
+        query_filter = query.filter
+
+        # Get work items
+        project_id = query_filter["project"]
+        items = self.get_work_items(project_id=project_id)
+
+        # Filter items by type
+        if "itemType" in query_filter:
+            items = [item for item in items if item["System.WorkItemType"] in query_filter["itemType"]]
+
+        return items
 
     async def create_data(
         self, item_type: str, query: SyncRuleQuery, data: Dict[str, Any], dry_run: bool = False
