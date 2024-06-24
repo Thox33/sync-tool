@@ -159,8 +159,37 @@ class FieldTypeRichText(FieldType[RichTextValue]):
         return rich_text_value
 
 
+class SyncStatusValue(BaseModel):
+    """Internal representation of a sync status value"""
+
+    value: str  # We start with the simple value. This will later contain extra fields for ids, status, etc.
+
+
+class FieldTypeSyncStatus(FieldType[SyncStatusValue]):
+    """Internal representation of an rich text field representing the current synchonrization status using html tags"""
+
+    type: Literal["syncStatus"]
+
+    def validate_value(self, value: Any, context: Optional[Any] = None) -> SyncStatusValue:
+        """Validate the value of the sync status field"""
+        if value is None:
+            value = ""
+        if not isinstance(value, str):
+            raise ValueError(f"Field {self.name} value {value} is not a string")
+
+        sync_status_value = SyncStatusValue(value=value)
+
+        return sync_status_value
+
+
 FieldTypes = (
-    FieldTypeInt | FieldTypeFloat | FieldTypeString | FieldTypeDatetime | FieldTypeReference | FieldTypeRichText
+    FieldTypeInt
+    | FieldTypeFloat
+    | FieldTypeString
+    | FieldTypeDatetime
+    | FieldTypeReference
+    | FieldTypeRichText
+    | FieldTypeSyncStatus
 )
 
 
@@ -189,4 +218,6 @@ def create_field_type(name: str, **kwargs: Any) -> FieldTypes:
         return FieldTypeReference(name=name, **kwargs)
     if kwargs["type"] == "richtext":
         return FieldTypeRichText(name=name, **kwargs)
+    if kwargs["type"] == "syncStatus":
+        return FieldTypeSyncStatus(name=name, **kwargs)
     raise ValueError(f"Unknown field type: {kwargs['type']}")

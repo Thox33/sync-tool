@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from sync_tool.core.provider.provider_base import ProviderBase
 from sync_tool.core.sync.sync_rule import SyncRuleDestination, SyncRuleQuery, SyncRuleSource
-from sync_tool.core.types import RichTextValue
+from sync_tool.core.types import RichTextValue, SyncStatusValue
 
 logger = structlog.getLogger(__name__)
 
@@ -348,7 +348,7 @@ class AzureDevOpsProvider(ProviderBase):
             correct_value = value
             if isinstance(value, datetime):
                 correct_value = value.isoformat()
-            elif isinstance(value, RichTextValue):
+            elif isinstance(value, RichTextValue | SyncStatusValue):
                 # @TODO: For now we only use the string value without inline attachment handling
                 correct_value = value.value
 

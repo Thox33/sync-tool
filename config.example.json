@@ -54,6 +54,10 @@
         "modifiedBy": {
           "type": "reference",
           "reference_type": "user"
+        },
+        "syncStatus": {
+          "type": "syncStatus",
+          "default": ""
         }
       }
     }
@@ -91,7 +95,8 @@
             "createdAt": "createdDate",
             "createdBy": "createdBy",
             "modifiedAt": "modifiedDate",
-            "modifiedBy": "modifiedBy"
+            "modifiedBy": "modifiedBy",
+            "syncStatus": "synctool_status"
           }
         }
       }
@@ -124,7 +129,8 @@
             "name": "fields.[System.Title]",
             "description": "fields.description",
             "createdAt": "fields.[System.CreatedDate]",
-            "modifiedAt": "fields.[System.ChangedDate]"
+            "modifiedAt": "fields.[System.ChangedDate]",
+            "syncStatus": "fields.SyncTool Status"
           }
         },
         "User Story": {
@@ -149,7 +155,7 @@
         "<rule_name>": {
           "source": {
             "provider": "<provider_name>",
-            "type": "<internal_type_name>",
+            "mapping": "<internal_type_name>",
             "query": {
               "filter": {
                 "project": [
@@ -180,7 +186,7 @@
           },
           "destination": {
             "provider": "<other_provider_name>",
-            "type": "<internal_type_name>",
+            "mapping": "<internal_type_name>",
             "query": {
               "filter": {
                 "project": "<project>",
