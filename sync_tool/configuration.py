@@ -2,18 +2,16 @@ import asyncio
 import json
 from copy import deepcopy
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict
 
 import structlog
 from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from sync_tool.contants import CONFIGURATION_FILE_NAME
-from sync_tool.core.data.data_configuration import DataConfiguration
-from sync_tool.core.data.mapping.mapping_provider import MappingProvider
-from sync_tool.core.provider.provider_base import ProviderBase
-from sync_tool.core.provider.provider_configuration import ProviderConfiguration
-from sync_tool.core.sync.sync_configuration import SyncConfiguration
+from sync_tool.core.provider import ProviderBase, ProviderConfiguration
+from sync_tool.core.sync import SyncConfiguration
+from sync_tool.core.types import InternalType, create_internal_type
 
 logger = structlog.getLogger(__name__)
 
@@ -26,14 +24,38 @@ class Configuration(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    # Data configuration
-    data: DataConfiguration = Field(default_factory=dict)
+    # Types configuration
+    types: Dict[str, InternalType] = Field(default_factory=dict)  # dict[internal_type_name, InternalType]
 
     # Provider configuration
     providers: Dict[str, ProviderConfiguration] = Field(default_factory=dict)  # Dict key is the provider name
 
     # Sync configuration
-    sync: Dict[str, SyncConfiguration] = Field(default_factory=dict)  # Dict key is the sync name
+    syncs: Dict[str, SyncConfiguration] = Field(default_factory=dict)  # Dict key is the sync name
+
+    @field_validator("types", mode="before")
+    @classmethod
+    def validate_and_convert(cls, types_to_convert: Any) -> Any:
+        """Validates and converts the types to the correct format.
+
+        Types are converted to InternalType objects.
+        """
+
+        # Handle types configuration
+        if not isinstance(types_to_convert, dict):
+            raise ValueError("Types configuration is not a dictionary.")
+
+        possible_internal_types = list(types_to_convert.keys())
+        types = {}
+        for type_name, type_data in types_to_convert.items():
+            if "fields" not in type_data:
+                raise ValueError(f"Missing 'fields' in type {type_name}")
+
+            types[type_name] = create_internal_type(
+                name=type_name, fields=type_data["fields"], possible_other_types=possible_internal_types
+            )
+
+        return types
 
     @field_validator("providers")
     @classmethod
@@ -44,17 +66,16 @@ class Configuration(BaseModel):
 
         return providers
 
-    def get_mapping_provider(self, mapping_name: str) -> MappingProvider | None:
-        """Get the mapping provider for a given mapping name.
+    def get_internal_type(self, name: str) -> InternalType | None:
+        """Get internal type by name.
 
         Args:
-            mapping_name (str): Name of the mapping provider to get.
+            name (str): Name of the internal type.
 
         Returns:
-            MappingProvider: The mapping provider.
-            None: If the mapping provider does not exist.
+            InternalType: Internal type object.
         """
-        return self.data.mappings.get(mapping_name)
+        return self.types.get(name)
 
     def get_provider(self, provider_name: str) -> ProviderConfiguration | None:
         """Get the provider configuration for a given provider name.
@@ -78,7 +99,7 @@ class Configuration(BaseModel):
             SyncConfiguration: The sync configuration.
             None: If the sync configuration does not exist.
         """
-        return self.sync.get(sync_name)
+        return self.syncs.get(sync_name)
 
 
 def load_configuration(config_path: str = CONFIGURATION_FILE_NAME, load_environment_file: bool = True) -> Configuration:
@@ -88,6 +109,8 @@ def load_configuration(config_path: str = CONFIGURATION_FILE_NAME, load_environm
 
     Args:
         config_path (str): Path to the configuration file. Defaults to "config.json".
+        load_environment_file (bool): Load environment variables from .env file.
+            Useful to disable for automatic testing. Defaults to True.
 
     Returns:
         Configuration: The loaded configuration.

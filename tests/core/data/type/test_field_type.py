@@ -3,7 +3,7 @@ from datetime import datetime
 
 import pytest
 
-from sync_tool.core.data.type.field_type import (
+from sync_tool.core.types import (
     FieldTypeInt,
     FieldTypeFloat,
     FieldTypeString,

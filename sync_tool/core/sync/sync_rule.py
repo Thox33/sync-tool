@@ -1,7 +1,9 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from pydantic_core.core_schema import ValidationInfo
+
+from sync_tool.core.sync.sync_transformer import Transformers
 
 
 class SyncRuleQuery(BaseModel):
@@ -14,21 +16,15 @@ class SyncRuleSource(BaseModel):
     query: SyncRuleQuery
 
 
-class SyncRuleDestination(BaseModel):
+class SyncRuleDestination(SyncRuleSource):
     provider: str
     type: str
     query: SyncRuleQuery
 
-    @field_validator("type")
-    @classmethod
-    def validate_type_contains_colon(cls, value: str) -> str:
-        if ":" not in value:
-            raise ValueError("Type must contain a colon. Format: 'internal_type:item_type'")
-        return value
-
 
 class SyncRule(BaseModel):
     source: SyncRuleSource
+    transformer: Dict[str, List[Transformers]] = Field(default_factory=dict)
     destination: SyncRuleDestination
 
     @field_validator("source")
@@ -47,7 +43,7 @@ class SyncRule(BaseModel):
 
     @field_validator("destination")
     @classmethod
-    def validate_destination(cls, destination: SyncRuleSource, info: ValidationInfo) -> SyncRuleSource:
+    def validate_destination(cls, destination: SyncRuleDestination, info: ValidationInfo) -> SyncRuleDestination:
         if info.context is not None and "providers" in info.context:
             # This is the second time configuration validation.
             # Providers are initialized and provided in context.

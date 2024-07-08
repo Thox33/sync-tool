@@ -2,7 +2,7 @@ from typing import Any, Dict
 
 from pydantic import BaseModel
 
-from sync_tool.core.data.mapping.mapping_helper import add_field_data_by_path, get_field_data_by_path
+from sync_tool.core.provider.mapping.mapping_helper import add_field_data_by_path, get_field_data_by_path
 
 
 class MappingInternalType(BaseModel):

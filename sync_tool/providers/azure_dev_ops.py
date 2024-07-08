@@ -10,9 +10,9 @@ from azure.devops.v7_0.work_item_tracking.work_item_tracking_client import WorkI
 from msrest.authentication import BasicAuthentication
 from pydantic import BaseModel
 
-from sync_tool.core.data.type.field_type import RichTextValue
 from sync_tool.core.provider.provider_base import ProviderBase
 from sync_tool.core.sync.sync_rule import SyncRuleDestination, SyncRuleQuery, SyncRuleSource
+from sync_tool.core.types import RichTextValue
 
 logger = structlog.getLogger(__name__)
 

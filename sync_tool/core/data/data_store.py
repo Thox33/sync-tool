@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 
 from pydantic import Field
 
-from sync_tool.core.data.type.internal_type import InternalType
+from sync_tool.core.types.internal_type import InternalType
 
 
 class InternalTypeStorage:

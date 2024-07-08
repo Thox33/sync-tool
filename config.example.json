@@ -1,115 +1,59 @@
 {
-  "data": {
-    "types": {
-      "users": {
-        "fields": {
-          "id": {
-            "type": "string"
-          },
-          "email": {
-            "type": "string",
-            "default": ""
-          }
-        }
-      },
-      "projects": {
-        "fields": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string",
-            "default": ""
-          }
-        }
-      },
-      "items": {
-        "fields": {
-          "id": {
-            "type": "string"
-          },
-          "project": {
-            "type": "reference",
-            "reference_type": "projects"
-          },
-          "name": {
-            "type": "string",
-            "default": ""
-          },
-          "description": {
-            "type": "richtext",
-            "default": ""
-          },
-          "createdAt": {
-            "type": "datetime",
-            "default": "now"
-          },
-          "createdBy": {
-            "type": "reference",
-            "reference_type": "users"
-          },
-          "modifiedAt": {
-            "type": "datetime",
-            "default": "now"
-          },
-          "modifiedBy": {
-            "type": "reference",
-            "reference_type": "users"
-          }
+  "types": {
+    "user": {
+      "fields": {
+        "id": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string",
+          "default": ""
         }
       }
     },
-    "mappings": {
-      "sync-tool-provider-jama": {
-        "users": {
-          "fields": {
-            "id": "id",
-            "email": "email"
-          }
+    "project": {
+      "fields": {
+        "id": {
+          "type": "string"
         },
-        "projects": {
-          "fields": {
-            "id": "id",
-            "name": "fields.name"
-          }
-        },
-        "items": {
-          "fields": {
-            "id": "id",
-            "project": "project",
-            "name": "fields.name",
-            "description": "fields.description",
-            "createdAt": "createdDate",
-            "createdBy": "createdBy",
-            "modifiedAt": "modifiedDate",
-            "modifiedBy": "modifiedBy"
-          }
+        "name": {
+          "type": "string",
+          "default": ""
         }
-      },
-      "sync-tool-provider-azure-devops": {
-        "users": {
-          "fields": {
-            "id": "id",
-            "email": "unique_name"
-          }
+      }
+    },
+    "item": {
+      "fields": {
+        "id": {
+          "type": "string"
         },
-        "projects": {
-          "fields": {
-            "id": "id",
-            "name": "name"
-          }
+        "project": {
+          "type": "reference",
+          "reference_type": "project"
         },
-        "items": {
-          "fields": {
-            "id": "id",
-            "project": "[System.TeamProject]",
-            "name": "[System.Title]",
-            "description": "fields.description",
-            "createdAt": "[System.CreatedDate]",
-            "createdBy": "[System.CreatedBy]",
-            "modifiedAt": "[System.ChangedDate]",
-            "modifiedBy": "[System.ChangedBy]"
-          }
+        "name": {
+          "type": "string",
+          "default": ""
+        },
+        "description": {
+          "type": "richtext",
+          "default": ""
+        },
+        "createdAt": {
+          "type": "datetime",
+          "default": "now"
+        },
+        "createdBy": {
+          "type": "reference",
+          "reference_type": "user"
+        },
+        "modifiedAt": {
+          "type": "datetime",
+          "default": "now"
+        },
+        "modifiedBy": {
+          "type": "reference",
+          "reference_type": "user"
         }
       }
     }
@@ -121,6 +65,35 @@
         "url": "https://detectomat-prod.jamacloud.com",
         "clientId": "env(DET_JAMA_CLIENT_ID)",
         "clientSecret": "env(DET_JAMA_CLIENT_SECRET)"
+      },
+      "mappings": {
+        "User": {
+          "type": "user",
+          "fields": {
+            "id": "id",
+            "email": "email"
+          }
+        },
+        "Project": {
+          "type": "project",
+          "fields": {
+            "id": "id",
+            "name": "fields.name"
+          }
+        },
+        "System Requirement": {
+          "type": "item",
+          "fields": {
+            "id": "id",
+            "project": "project",
+            "name": "fields.name",
+            "description": "fields.description",
+            "createdAt": "createdDate",
+            "createdBy": "createdBy",
+            "modifiedAt": "modifiedDate",
+            "modifiedBy": "modifiedBy"
+          }
+        }
       }
     },
     "<other_provider_name>": {
@@ -128,6 +101,32 @@
       "options": {
         "organization_url": "https://dev.azure.com/detectomat-pu",
         "personal_access_token": "env(DET_ADO_PERSONAL_ACCESS_TOKEN)"
+      },
+      "mappings": {
+        "User": {
+          "type": "user",
+          "fields": {
+            "id": "id",
+            "email": "unique_name"
+          }
+        },
+        "Project": {
+          "type": "project",
+          "fields": {
+            "id": "id",
+            "name": "name"
+          }
+        },
+        "Feature": {
+          "type": "item",
+          "fields": {
+            "id": "id",
+            "name": "fields.[System.Title]",
+            "description": "fields.description",
+            "createdAt": "fields.[System.CreatedDate]",
+            "modifiedAt": "fields.[System.ChangedDate]"
+          }
+        }
       }
     }
   },
@@ -137,7 +136,7 @@
         "<rule_name>": {
           "source": {
             "provider": "<provider_name>",
-            "type": "<type_name>",
+            "type": "<internal_type_name>",
             "query": {
               "filter": {
                 "project": [
@@ -155,9 +154,20 @@
               }
             }
           },
+          "transformer": {
+            "<field_name>": [
+              {
+                "type": "mapping",
+                "map": {
+                  "source_value": "destination_value",
+                  "source_value_2": "destination_value_2"
+                }
+              }
+            ]
+          },
           "destination": {
             "provider": "<other_provider_name>",
-            "type": "<type_name>:<item_type>",
+            "type": "<internal_type_name>",
             "query": {
               "filter": {
                 "project": "<project>",

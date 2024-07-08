@@ -153,7 +153,19 @@ class JamaProvider(ProviderBase):
                     raise ValueError(f"release {release_id} not found")
 
     def validate_sync_rule_destination(self, destination: SyncRuleDestination) -> None:
-        raise ValueError("Usage as destination is currently not supported by this provider.")
+        """Validates the destination of a sync rule that it contains a valid type and query.
+
+        Args:
+            destination: The destination to validate.
+
+        Raises:
+            ValueError: If the destination is invalid.
+        """
+
+        if destination.type == "":
+            raise ValueError("destination type has to be specified")
+
+        # Destination type is a concatenation of the internal type and the item type (e.g. "item:Feature")
 
     def _get_release(self, release_id: str) -> Dict[str, Any]:
         """
