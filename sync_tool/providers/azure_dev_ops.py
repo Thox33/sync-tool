@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple, TypedDict, cast
 
 import requests
 import structlog
@@ -10,14 +10,25 @@ from azure.devops.v7_0.work_item_tracking.work_item_tracking_client import WorkI
 from msrest.authentication import BasicAuthentication
 from pydantic import BaseModel
 
-from sync_tool.core.data.type.field_type import RichTextValue
 from sync_tool.core.provider.provider_base import ProviderBase
 from sync_tool.core.sync.sync_rule import SyncRuleDestination, SyncRuleQuery, SyncRuleSource
+from sync_tool.core.types import RichTextValue
 
 logger = structlog.getLogger(__name__)
 
-AzureUser = Dict[str, Any]
-AzureProject = Dict[str, Any]
+
+class AzureUser(TypedDict):
+    id: str
+    display_name: str
+    unique_name: str
+
+
+class AzureProject(TypedDict):
+    id: str
+    name: str
+    wits: List[str]  # Work item types
+
+
 AzureWorkItem = Dict[str, Any]
 
 
@@ -75,15 +86,14 @@ def flatten_dict(d: Dict[str, Any], parent_key: str = "", sep: str = ".") -> Dic
 class AzureDevOpsProvider(ProviderBase):
     """Azure DevOps API wrapper used for fetching and updating data from Azure DevOps."""
 
-    _supported_internal_types = ["items"]
-    _supported_item_types = ["Feature"]
-
     _config: AzureDevOpsConfig
     _connection: Connection
     _core_client: CoreClient
     _work_item_client: WorkItemTrackingClient
-    _users: Dict[str, AzureUser] = {}
-    _projects: Dict[str, AzureProject] = {}
+
+    _users: Dict[str, AzureUser]  # Normalized by ID
+    _projects_by_id: Dict[str, AzureProject]  # Normalized by ID
+    _projects_by_name: Dict[str, AzureProject]  # Normalized by name
 
     @staticmethod
     def validate_config(options: Optional[Dict[str, Any]] = None) -> None:
@@ -116,8 +126,18 @@ class AzureDevOpsProvider(ProviderBase):
     def _load_projects(self) -> None:
         """Retrieve all projects from Azure DevOps. Normalize and store them in a dictionary."""
         projects_response = self._core_client.get_projects()
-        self._projects = {str(project.id): project.as_dict() for project in projects_response}
-        logger.debug("loaded projects", projects=self._projects)
+        normalized_by_id = {}
+        normalized_by_name = {}
+        for project in projects_response:
+            project_work_item_types = self._work_item_client.get_work_item_types(project.id)
+            azure_project = AzureProject(
+                id=project.id, name=project.name, wits=[wit.name for wit in project_work_item_types]
+            )
+            normalized_by_id[project.id] = azure_project
+            normalized_by_name[project.name] = azure_project
+        self._projects_by_id = normalized_by_id
+        self._projects_by_name = normalized_by_name
+        logger.debug("loaded projects", projects=self._projects_by_id)
 
     def _load_users(self) -> None:
         """
@@ -125,11 +145,12 @@ class AzureDevOpsProvider(ProviderBase):
         fetching team members via direct HTTP requests.
         """
         # Check if projects have been loaded
-        if not self._projects:
+        if not self._projects_by_id:
             logger.error("Projects must be loaded before loading users.")
             return
 
-        for project_id, project in self._projects.items():
+        normalized_users = {}
+        for project_id, project in self._projects_by_id.items():
             try:
                 # Fetch teams for the current project using the Azure DevOps Client
                 teams = self._core_client.get_teams(project_id=project_id)
@@ -148,20 +169,21 @@ class AzureDevOpsProvider(ProviderBase):
                         for member in members_data.get("value", []):
                             user_id = str(member["identity"]["id"])
 
-                            if user_id not in self._users:
-                                self._users[user_id] = {
-                                    "id": member["identity"]["id"],
-                                    "display_name": member["identity"]["displayName"],
-                                    "unique_name": member["identity"]["uniqueName"],
-                                    "url": member["identity"]["url"],
-                                }
-                                logger.debug("loaded user", user_id=user_id, user_details=self._users[user_id])
+                            if user_id not in normalized_users:
+                                normalized_users[user_id] = AzureUser(
+                                    id=user_id,
+                                    display_name=member["identity"]["displayName"],
+                                    unique_name=member["identity"]["uniqueName"],
+                                )
                     else:
                         logger.error(
                             f"Failed to get team members for team {team_id} in project {project_id}: {response.text}"
                         )
             except Exception as e:
                 logger.error(f"Failed to get teams or team members for project {project_id}: {str(e)}")
+
+        self._users = normalized_users
+        logger.debug("loaded users", users=self._users)
 
     def validate_sync_rule_source(self, source: SyncRuleSource) -> None:
         """Validates the source of a sync rule that it at least should contain project (array),
@@ -173,10 +195,39 @@ class AzureDevOpsProvider(ProviderBase):
         Raises:
             ValueError: If the source is invalid.
         """
-        raise ValueError("Usage as source is currently not supported by this provider.")
+
+        # Validate sync rule mapping
+        # TODO: Validate source mapping
+
+        # Validate query filter
+        query_filter = source.query.filter
+
+        if "project" not in query_filter:
+            raise ValueError("source has to contain project")
+
+        if "project" in query_filter and not isinstance(query_filter["project"], str):
+            raise ValueError("project has to be a string")
+
+        if "itemType" in query_filter and not isinstance(query_filter["itemType"], str):
+            raise ValueError("itemType has to be a string")
+
+        if "project" in query_filter:
+            project_name = query_filter["project"]
+            if self._projects_by_name.get(project_name) is None:
+                raise ValueError(f"project {project_name} not found")
+
+        if "itemType" in query_filter and "project" not in query_filter:
+            raise NotImplementedError("Please provide a project filter for itemType filtering")
+        if "itemType" in query_filter and "project" in query_filter:
+            project_name = query_filter["project"]
+            project = self._projects_by_name.get(project_name)
+            if not project:
+                raise ValueError(f"project {project_name} not found")
+            if query_filter["itemType"] not in project["wits"]:
+                raise ValueError(f"itemType {query_filter['itemType']} not found in project {project_name}")
 
     def validate_sync_rule_destination(self, destination: SyncRuleDestination) -> None:
-        """Validates the destination of a sync rule that it contains a valid type and query.
+        """Validates the destination of a sync rule that it contains a valid mapping and query.
 
         Args:
             destination: The destination to validate.
@@ -185,15 +236,8 @@ class AzureDevOpsProvider(ProviderBase):
             ValueError: If the destination is invalid.
         """
 
-        if destination.type == "":
-            raise ValueError("destination type has to be specified")
-
-        # Destination type is a concatenation of the internal type and the item type (e.g. "item:Feature")
-        internal_type, item_type = destination.type.split(":")
-        if internal_type not in self._supported_internal_types:
-            raise ValueError(f"destination internal type {internal_type} is not supported")
-        if item_type not in self._supported_item_types:
-            raise ValueError(f"destination item type {item_type} is not supported")
+        if destination.mapping == "":
+            raise ValueError("destination mapping has to be specified")
 
         # The destination should contain an valid query to find a correct parent to create the synced items
         if not destination.query:
@@ -204,34 +248,61 @@ class AzureDevOpsProvider(ProviderBase):
             raise ValueError("destination query has to contain a filter")
 
         project = dest_query.filter.get("project")
-        item_id = dest_query.filter.get("itemId")
+        parent_item_id = dest_query.filter.get("parentItemId")
 
         if not project:
             raise ValueError("destination query has to contain a project")
-        if not item_id:
-            raise ValueError("destination query has to contain an itemId")
+        if not parent_item_id:
+            raise ValueError("destination query has to contain an parentItemId")
 
-        if project not in self._projects:
+        if project not in self._projects_by_name:
             raise ValueError(f"destination query project {project} not found")
 
-        if item_id and not project:
-            raise ValueError("destination query has to contain a project if provided an itemId")
+        if parent_item_id and not project:
+            raise ValueError("destination query has to contain a project if provided an parentItemId")
 
-        if item_id and project:
-            work_items = self.get_work_items(project_id=project, item_id=item_id)
+        if parent_item_id and project:
+            work_items = self.get_work_items(project_name=project, item_id=parent_item_id)
             if not work_items:
-                raise ValueError(f"destination query item {item_id} not found in project {project}")
+                raise ValueError(f"destination query item {parent_item_id} not found in project {project}")
             if len(work_items) > 1:
-                raise ValueError(f"destination query item {item_id} found multiple times in project {project}")
+                raise ValueError(f"destination query item {parent_item_id} found multiple times in project {project}")
 
     def get_user_by_id(self, user_id: str) -> Optional[AzureUser]:
         return self._users.get(user_id)
 
     def get_project_by_id(self, project_id: str) -> Optional[AzureProject]:
-        return self._projects.get(project_id)
+        return self._projects_by_id.get(project_id)
 
     async def get_data(self, item_type: str, query: SyncRuleQuery) -> List[Dict[str, Any]]:
-        return []
+        """Get data from the provider.
+
+        Will be called to get data from the provider.
+
+        TODO: As we currently only support items as source we have put everything here. Later on we should split this
+
+        Args:
+            item_type: The source to get the data from.
+            query: The query to filter the data based on.
+
+        Returns:
+            List[Dict[str, Any]]: The data as list.
+
+        Raises:
+            ValueError: If the item_type is invalid or not supported by this provider.
+            ProviderGetDataError: If the data could not be retrieved.
+        """
+        query_filter = query.filter
+
+        # Get work items
+        project_name = query_filter["project"]
+        items = self.get_work_items(project_name=project_name)
+
+        # Filter items by type
+        if "itemType" in query_filter:
+            items = [item for item in items if item["fields"]["System.WorkItemType"] in query_filter["itemType"]]
+
+        return items
 
     async def create_data(
         self, item_type: str, query: SyncRuleQuery, data: Dict[str, Any], dry_run: bool = False
@@ -244,26 +315,25 @@ class AzureDevOpsProvider(ProviderBase):
         Additionally we have to add the workitem as child to the destination query workitem.
 
         Args:
-            item_type: The internal type of data inside of data and the item type to create, e.g. "items:Feature"
+            item_type: The internal type of data to create, e.g. "Feature"
             query: The destination query from the configuration of the sync rule
             data: Plain object; already run through the transformation and mapping to be in the right format
             dry_run: If True, the data will not be created but the operation will be logged
         """
-        # Destination type is a concatenation of the internal type and the item type (e.g. "item:Feature")
-        internal_type, work_item_type = item_type.split(":")
-
-        # Get the project id
-        project_id = query.filter["project"]
-        if not project_id:
-            raise ValueError("project has to be provided")
+        # Get the project name
+        project_name = query.filter["project"]
+        project = self._projects_by_name.get(project_name)
+        if not project:
+            raise ValueError(f"project {project_name} not found")
+        project_id = project["id"]
 
         # Get the destination work item
-        item_id = query.filter["itemId"]
-        parent_work_item_url = f"{self._config.organization_url}/_apis/wit/workitems/{item_id}"
-        if item_id:
+        parent_item_id = query.filter["parentItemId"]
+        parent_work_item_url = f"{self._config.organization_url}/_apis/wit/workitems/{parent_item_id}"
+        if parent_item_id:
             logger.debug("Destination work item", parent_work_item_url=parent_work_item_url)
         else:
-            logger.error("No parent relation will be created")
+            logger.info("No parent relation will be created")
 
         # Create the json patch document
         patch_document = []
@@ -284,7 +354,7 @@ class AzureDevOpsProvider(ProviderBase):
 
             patch_document.append({"op": "add", "path": f"/{key}", "value": correct_value})
 
-        if item_id:
+        if parent_item_id:
             patch_document.append(
                 {
                     "op": "add",
@@ -299,14 +369,14 @@ class AzureDevOpsProvider(ProviderBase):
             work_item = self._work_item_client.create_work_item(
                 document=patch_document,
                 project=project_id,
-                type=work_item_type,
+                type=item_type,
                 bypass_rules=True,  # Needed to create as another user and also set the correct dates
             )
             logger.debug("Created work item", work_item_id=work_item.id, work_item=work_item)
 
     def get_work_items(
         self,
-        project_id: str,
+        project_name: str,
         item_id: Optional[str] = None,
         earliest_date: Optional[datetime] = None,
         latest_date: Optional[datetime] = None,
@@ -315,12 +385,6 @@ class AzureDevOpsProvider(ProviderBase):
         assigned_to: Optional[str] = None,
     ) -> List[AzureWorkItem]:
         """Retrieve all work items for a given project using the project's name and optional filters."""
-        # Find the project name using the project ID
-        project_name = self._projects[project_id]["name"] if project_id in self._projects else None
-        if not project_name:
-            logger.error(f"Project with ID {project_id} not found.")
-            return []
-
         # Build the WIQL query dynamically based on provided parameters
         query_parts = [
             f"Select [Id], [Title], [State] From WorkItems Where [System.TeamProject] = '{project_name}'"  # nosec B206
@@ -341,7 +405,7 @@ class AzureDevOpsProvider(ProviderBase):
         wiql_query = Wiql(query=" ".join(query_parts))
         try:
             query_result = self._work_item_client.query_by_wiql(wiql_query)
-            all_work_items = [self._work_item_client.get_work_item(wi.id).fields for wi in query_result.work_items]
+            all_work_items = [self._work_item_client.get_work_item(wi.id).as_dict() for wi in query_result.work_items]
             logger.debug(f"Retrieved {len(all_work_items)} work items for project {project_name}.")
             return all_work_items
         except Exception as e:

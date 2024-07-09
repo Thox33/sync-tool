@@ -5,6 +5,7 @@ import structlog
 from pydantic import BaseModel, ConfigDict, field_validator
 from pydantic_core.core_schema import ValidationInfo
 
+from sync_tool.core.provider.mapping import MappingInternalType, create_mapping_internal_type
 from sync_tool.core.provider.provider_base import ProviderBase
 from sync_tool.core.provider.provider_resolve import provider_resolve
 
@@ -19,10 +20,31 @@ class ProviderConfiguration(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
+    mappings: Dict[str, MappingInternalType]  # dict[internal_type_name, MappingInternalType]
+    """Mappings for this provider"""
     options: Optional[Dict[str, Any]] = None
     """Options to configure this provider"""
     provider: str
     """Entrypoint name of the provider. Example: 'sync-tool-provider-testing'"""
+
+    @field_validator("mappings", mode="before")
+    @classmethod
+    def validate_and_convert_mappings(cls, mappings_to_convert: Any) -> Any:
+        """Validates and converts the mappings to the correct format."""
+
+        if not isinstance(mappings_to_convert, dict):
+            raise ValueError("Mappings configuration is not a dictionary.")
+
+        mappings = {}
+        for internal_type_name, mapping_data in mappings_to_convert.items():
+            if "fields" not in mapping_data:
+                raise ValueError(f"Missing 'fields' in mapping for internal type '{internal_type_name}'")
+
+            mappings[internal_type_name] = create_mapping_internal_type(
+                internal_type_name=internal_type_name, fields=mapping_data["fields"]
+            )
+
+        return mappings
 
     @field_validator("options")
     @classmethod
@@ -63,3 +85,19 @@ class ProviderConfiguration(BaseModel):
         if self.options is None:
             return provider_resolve(self.provider)()
         return provider_resolve(self.provider)(**self.options)
+
+    def map_raw_data_to_internal_format(self, internal_type_name: str, raw_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Map raw data to internal type data."""
+        mapping = self.mappings.get(internal_type_name)
+        if not mapping:
+            raise ValueError(f"Mapping for internal type '{internal_type_name}' not found.")
+
+        return mapping.map_from_raw_data(raw_data)
+
+    def map_internal_data_to_raw_format(self, internal_type_name: str, internal_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Map internal type data to raw data."""
+        mapping = self.mappings.get(internal_type_name)
+        if not mapping:
+            raise ValueError(f"Mapping for internal type '{internal_type_name}' not found.")
+
+        return mapping.map_to_raw_data(internal_data)

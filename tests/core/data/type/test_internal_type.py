@@ -1,13 +1,13 @@
 from datetime import datetime
 
-from sync_tool.core.data.type.field_type import (
+from sync_tool.core.types import (
     FieldTypeInt,
     FieldTypeFloat,
     FieldTypeString,
     FieldTypeDatetime,
     FieldTypeReference,
 )
-from sync_tool.core.data.type.internal_type import create_internal_type
+from sync_tool.core.types.internal_type import create_internal_type
 
 
 def test_create_internal_type():

@@ -2,7 +2,7 @@ from typing import Any, Dict, List
 
 from pydantic import BaseModel, Field
 
-from sync_tool.core.data.type.field_type import FieldTypeReference, FieldTypes, create_field_type
+from sync_tool.core.types.field_type import FieldTypeReference, FieldTypes, create_field_type
 
 
 class InternalType(BaseModel):
