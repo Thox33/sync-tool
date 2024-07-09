@@ -26,6 +26,7 @@ class AzureUser(TypedDict):
 class AzureProject(TypedDict):
     id: str
     name: str
+    wits: List[str]  # Work item types
 
 
 AzureWorkItem = Dict[str, Any]
@@ -128,7 +129,10 @@ class AzureDevOpsProvider(ProviderBase):
         normalized_by_id = {}
         normalized_by_name = {}
         for project in projects_response:
-            azure_project = AzureProject(id=project.id, name=project.name)
+            project_work_item_types = self._work_item_client.get_work_item_types(project.id)
+            azure_project = AzureProject(
+                id=project.id, name=project.name, wits=[wit.name for wit in project_work_item_types]
+            )
             normalized_by_id[project.id] = azure_project
             normalized_by_name[project.name] = azure_project
         self._projects_by_id = normalized_by_id
@@ -204,16 +208,23 @@ class AzureDevOpsProvider(ProviderBase):
         if "project" in query_filter and not isinstance(query_filter["project"], str):
             raise ValueError("project has to be a string")
 
-        if "itemType" in query_filter and not isinstance(query_filter["itemType"], list):
-            raise ValueError("itemType has to be a list")
+        if "itemType" in query_filter and not isinstance(query_filter["itemType"], str):
+            raise ValueError("itemType has to be a string")
 
         if "project" in query_filter:
-            for project_id in query_filter["project"]:
-                if self.get_project_by_id(project_id=project_id) is None:
-                    raise ValueError(f"project {project_id} not found")
+            project_name = query_filter["project"]
+            if self._projects_by_name.get(project_name) is None:
+                raise ValueError(f"project {project_name} not found")
 
-        if "itemType" in query_filter:
-            raise NotImplementedError("itemType querying is not implemented yet")
+        if "itemType" in query_filter and "project" not in query_filter:
+            raise NotImplementedError("Please provide a project filter for itemType filtering")
+        if "itemType" in query_filter and "project" in query_filter:
+            project_name = query_filter["project"]
+            project = self._projects_by_name.get(project_name)
+            if not project:
+                raise ValueError(f"project {project_name} not found")
+            if query_filter["itemType"] not in project["wits"]:
+                raise ValueError(f"itemType {query_filter['itemType']} not found in project {project_name}")
 
     def validate_sync_rule_destination(self, destination: SyncRuleDestination) -> None:
         """Validates the destination of a sync rule that it contains a valid mapping and query.
