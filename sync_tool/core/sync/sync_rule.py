@@ -12,13 +12,13 @@ class SyncRuleQuery(BaseModel):
 
 class SyncRuleSource(BaseModel):
     provider: str
-    type: str
+    mapping: str  # Name of mapping in provider context
     query: SyncRuleQuery
 
 
 class SyncRuleDestination(SyncRuleSource):
     provider: str
-    type: str
+    mapping: str  # Name of mapping in provider context
     query: SyncRuleQuery
 
 
