@@ -23,6 +23,7 @@ class SyncRuleDestination(SyncRuleSource):
 
 
 class SyncRule(BaseModel):
+    type: str  # Internal type name
     source: SyncRuleSource
     transformer: Dict[str, List[Transformers]] = Field(default_factory=dict)
     destination: SyncRuleDestination

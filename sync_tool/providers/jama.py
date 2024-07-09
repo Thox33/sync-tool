@@ -242,12 +242,16 @@ class JamaProvider(ProviderBase):
         query_filter = query.filter
 
         if "project" in query_filter:
-            project_ids = query_filter["project"]
+            possible_projects: List[JamaProject | None] = [
+                self._projects_by_name.get(project_name) for project_name in query_filter["project"]
+            ]
+            projects: List[JamaProject] = [project for project in possible_projects if project is not None]
+            project_ids = [project["id"] for project in projects]
         else:
             project_ids = None
 
         if "itemType" in query_filter:
-            item_types = query_filter["itemType"]
+            item_types = [self._item_types.get(item_type_name) for item_type_name in query_filter["itemType"]]
         else:
             item_types = None
 

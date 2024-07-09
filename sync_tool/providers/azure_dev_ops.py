@@ -309,9 +309,6 @@ class AzureDevOpsProvider(ProviderBase):
             data: Plain object; already run through the transformation and mapping to be in the right format
             dry_run: If True, the data will not be created but the operation will be logged
         """
-        # Destination type is a concatenation of the internal type and the item type (e.g. "item:Feature")
-        internal_type, work_item_type = item_type.split(":")
-
         # Get the project id
         project_id = query.filter["project"]
         if not project_id:
@@ -359,7 +356,7 @@ class AzureDevOpsProvider(ProviderBase):
             work_item = self._work_item_client.create_work_item(
                 document=patch_document,
                 project=project_id,
-                type=work_item_type,
+                type=item_type,
                 bypass_rules=True,  # Needed to create as another user and also set the correct dates
             )
             logger.debug("Created work item", work_item_id=work_item.id, work_item=work_item)
