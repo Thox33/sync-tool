@@ -31,63 +31,6 @@ def configuration_validate() -> None:
         raise typer.Exit(code=1)
 
 
-# Subcommand: Projects
-cli_projects = typer.Typer(no_args_is_help=True)
-
-
-@cli_projects.command(name="list")
-def projects_list(
-    sync_name: Annotated[str, typer.Argument(help="Name of the sync to validate")],
-    rule_name: Annotated[str, typer.Argument(help="Name of the rule to validate")],
-) -> None:
-    typer.echo("Listing projects...")
-
-    # Load configuration
-    try:
-        config = load_configuration()
-    except Exception as e:
-        typer.echo(f"Configuration is invalid: {e}")
-        raise typer.Exit(code=1)
-
-    # Getting sync configuration
-    sync = config.get_sync(sync_name)
-    if sync is None:
-        typer.echo(f"Sync '{sync_name}' not found in configuration.")
-        raise typer.Exit(code=1)
-
-    # Getting sync rule
-    rule = sync.get_rule(rule_name)
-    if rule is None:
-        typer.echo(f"Rule '{rule_name}' not found in sync '{sync_name}'.")
-        raise typer.Exit(code=1)
-
-    # Getting source provider
-    provider_source = config.get_provider(rule.source.provider)
-    if provider_source is None:
-        typer.echo(f"Provider '{rule.source.provider}' not found in configuration.")
-        raise typer.Exit(code=1)
-    # Prepare source provider
-    try:
-        provider_source_instance = provider_source.make_instance()
-        asyncio.run(provider_source_instance.init())
-    except Exception as e:
-        typer.echo(f"Could not initialize provider '{rule.source.provider}': {e}")
-        raise typer.Exit(code=1)
-
-    # Getting destination provider
-    provider_destination = config.get_provider(rule.destination.provider)
-    if provider_destination is None:
-        typer.echo(f"Provider '{rule.destination.provider}' not found in configuration.")
-        raise typer.Exit(code=1)
-    # Prepare destination provider
-    try:
-        provider_destination_instance = provider_destination.make_instance()
-        asyncio.run(provider_destination_instance.init())
-    except Exception as e:
-        typer.echo(f"Could not initialize provider '{rule.destination.provider}': {e}")
-        raise typer.Exit(code=1)
-
-
 # Subcommand: Sync
 cli_sync = typer.Typer(no_args_is_help=True)
 
@@ -265,7 +208,6 @@ def data_get(
 # Main Application
 cli = typer.Typer(no_args_is_help=True)
 cli.add_typer(cli_config, name="configuration")
-cli.add_typer(cli_projects, name="projects")
 cli.add_typer(cli_sync, name="sync")
 
 if __name__ == "__main__":
