@@ -1,35 +1,9 @@
 {
   "types": {
-    "user": {
-      "fields": {
-        "id": {
-          "type": "string"
-        },
-        "email": {
-          "type": "string",
-          "default": ""
-        }
-      }
-    },
-    "project": {
-      "fields": {
-        "id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string",
-          "default": ""
-        }
-      }
-    },
     "item": {
       "fields": {
         "id": {
           "type": "string"
-        },
-        "project": {
-          "type": "reference",
-          "reference_type": "project"
         },
         "name": {
           "type": "string",
@@ -44,16 +18,14 @@
           "default": "now"
         },
         "createdBy": {
-          "type": "reference",
-          "reference_type": "user"
+          "type": "string"
         },
         "modifiedAt": {
           "type": "datetime",
           "default": "now"
         },
         "modifiedBy": {
-          "type": "reference",
-          "reference_type": "user"
+          "type": "string"
         },
         "syncStatus": {
           "type": "syncStatus",
@@ -71,31 +43,27 @@
         "clientSecret": "env(DET_JAMA_CLIENT_SECRET)"
       },
       "mappings": {
-        "User": {
-          "type": "user",
-          "fields": {
-            "id": "id",
-            "email": "email"
-          }
-        },
-        "Project": {
-          "type": "project",
-          "fields": {
-            "id": "id",
-            "name": "fields.name"
-          }
-        },
         "System Requirement": {
           "type": "item",
           "fields": {
             "id": "id",
-            "project": "project",
             "name": "fields.name",
             "description": "fields.description",
             "createdAt": "createdDate",
             "createdBy": "createdBy",
             "modifiedAt": "modifiedDate",
             "modifiedBy": "modifiedBy",
+            "syncStatus": "synctool_status"
+          }
+        },
+        "User Story": {
+          "type": "item",
+          "fields": {
+            "id": "id",
+            "name": "fields.name",
+            "description": "fields.description",
+            "createdAt": "createdDate",
+            "modifiedAt": "modifiedDate",
             "syncStatus": "synctool_status"
           }
         }
@@ -108,20 +76,6 @@
         "personal_access_token": "env(DET_ADO_PERSONAL_ACCESS_TOKEN)"
       },
       "mappings": {
-        "User": {
-          "type": "user",
-          "fields": {
-            "id": "id",
-            "email": "unique_name"
-          }
-        },
-        "Project": {
-          "type": "project",
-          "fields": {
-            "id": "id",
-            "name": "name"
-          }
-        },
         "Feature": {
           "type": "item",
           "fields": {
@@ -137,13 +91,13 @@
           "type": "item",
           "fields": {
             "id": "id",
-            "project": "fields.[System.TeamProject]",
             "name": "fields.[System.Title]",
             "description": "fields.[System.Description]",
             "createdAt": "fields.[System.CreatedDate]",
             "createdBy": "fields.[System.CreatedBy].uniqueName",
             "modifiedAt": "fields.[System.ChangedDate]",
-            "modifiedBy": "fields.[System.ChangedBy].uniqueName"
+            "modifiedBy": "fields.[System.ChangedBy].uniqueName",
+            "syncStatus": "fields.SyncTool Status"
           }
         }
       }
