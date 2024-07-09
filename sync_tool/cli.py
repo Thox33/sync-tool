@@ -166,7 +166,7 @@ def data_get(
 
     # Create data in destination provider
     creating_destination_exceptions = []
-    for item in track(mapped_destination_items, description="Creating data..."):
+    for item in track(mapped_destination_items, description=f"Creating data{' (dry run)' if dry_run else ''}..."):
         try:
             asyncio.run(
                 provider_destination_instance.create_data(

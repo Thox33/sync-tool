@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, Dict, List, Optional, TypedDict
 
 import structlog
@@ -7,6 +8,7 @@ from pydantic import BaseModel
 
 from sync_tool.core.provider.provider_base import ProviderBase
 from sync_tool.core.sync.sync_rule import SyncRuleDestination, SyncRuleQuery, SyncRuleSource
+from sync_tool.core.types import RichTextValue
 
 logger = structlog.getLogger(__name__)
 
@@ -191,7 +193,32 @@ class JamaProvider(ProviderBase):
         if destination.mapping == "":
             raise ValueError("destination mapping has to be specified")
 
-        # Destination type is a concatenation of the internal type and the item type (e.g. "item:Feature")
+        # The destination should contain an valid query to find a correct parent to create the synced items
+        if not destination.query:
+            raise ValueError("destination query has to be specified")
+
+        dest_query = destination.query
+        if not dest_query.filter:
+            raise ValueError("destination query has to contain a filter")
+
+        project = dest_query.filter.get("project")
+        parent_item_id = dest_query.filter.get("parentItemId")
+
+        if not project:
+            raise ValueError("destination query has to contain a project")
+        if not parent_item_id:
+            raise ValueError("destination query has to contain an parentItemId")
+
+        if project not in self._projects_by_name:
+            raise ValueError(f"destination query project {project} not found")
+
+        if parent_item_id and not project:
+            raise ValueError("destination query has to contain a project if provided an parentItemId")
+
+        if parent_item_id and project:
+            found_item = self._client.get_item(parent_item_id)
+            if not found_item:
+                raise ValueError(f"destination query item {parent_item_id} not found in project {project}")
 
     def _get_release(self, release_id: str) -> Dict[str, Any]:
         """
@@ -277,7 +304,78 @@ class JamaProvider(ProviderBase):
     async def create_data(
         self, item_type: str, query: SyncRuleQuery, data: Dict[str, Any], dry_run: bool = False
     ) -> None:
-        raise ValueError("Usage as destination is currently not supported by this provider.")
+        """
+        Create data in the provider. For the jama items we have to create an json object.
+        Format:
+        {
+          "project": 0,
+          "itemType": 0,
+          "location": {
+            "parent": {
+              "item": 0,
+              "project": 0
+            }
+          },
+          "fields": {
+            "additionalProp1": {},
+            "additionalProp2": {},
+            "additionalProp3": {}
+          }
+        }
+
+        Args:
+            item_type: The internal type of data to create, e.g. "User Story"
+            query: The destination query from the configuration of the sync rule
+            data: Plain object; already run through the transformation and mapping to be in the right format
+            dry_run: If True, the data will not be created but the operation will be logged
+        """
+
+        # Get the project name
+        project_name = query.filter["project"]
+        project = self._projects_by_name.get(project_name)
+        if not project:
+            raise ValueError(f"project {project_name} not found")
+        project_id = project["id"]
+
+        # Get the destination work item
+        parent_item_id = query.filter["parentItemId"]
+        if not parent_item_id:
+            raise ValueError("parentItemId has to be provided")
+
+        # Get item type id
+        item_type_id = self._item_types.get(item_type)
+        if not item_type_id:
+            raise ValueError(f"itemType {item_type} not found")
+
+        # Correct data inside of fields
+        fields = {}
+        for key, value in data["fields"].items():
+            correct_value = value
+            if isinstance(value, datetime):
+                correct_value = value.isoformat()
+            elif isinstance(value, RichTextValue):
+                # @TODO: For now we only use the string value without inline attachment handling
+                correct_value = value.value
+            fields[key] = correct_value
+
+        # Create the item
+        item_data = {
+            "project": project_id,
+            "itemType": item_type_id,
+            "location": {"parent": {"item": parent_item_id}},
+            "fields": fields,
+        }
+        logger.debug("New item", item=item_data)
+
+        if not dry_run:
+            item_id = self._client.post_item(
+                project=item_data["project"],
+                item_type_id=item_data["itemType"],
+                child_item_type_id=None,
+                location={"item": parent_item_id},
+                fields=item_data["fields"],
+            )
+            logger.debug("Created item", itemId=item_id)
 
     async def teardown(self) -> None:
         pass

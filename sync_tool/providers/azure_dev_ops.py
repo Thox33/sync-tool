@@ -248,25 +248,25 @@ class AzureDevOpsProvider(ProviderBase):
             raise ValueError("destination query has to contain a filter")
 
         project = dest_query.filter.get("project")
-        item_id = dest_query.filter.get("itemId")
+        parent_item_id = dest_query.filter.get("parentItemId")
 
         if not project:
             raise ValueError("destination query has to contain a project")
-        if not item_id:
-            raise ValueError("destination query has to contain an itemId")
+        if not parent_item_id:
+            raise ValueError("destination query has to contain an parentItemId")
 
         if project not in self._projects_by_name:
             raise ValueError(f"destination query project {project} not found")
 
-        if item_id and not project:
-            raise ValueError("destination query has to contain a project if provided an itemId")
+        if parent_item_id and not project:
+            raise ValueError("destination query has to contain a project if provided an parentItemId")
 
-        if item_id and project:
-            work_items = self.get_work_items(project_name=project, item_id=item_id)
+        if parent_item_id and project:
+            work_items = self.get_work_items(project_name=project, item_id=parent_item_id)
             if not work_items:
-                raise ValueError(f"destination query item {item_id} not found in project {project}")
+                raise ValueError(f"destination query item {parent_item_id} not found in project {project}")
             if len(work_items) > 1:
-                raise ValueError(f"destination query item {item_id} found multiple times in project {project}")
+                raise ValueError(f"destination query item {parent_item_id} found multiple times in project {project}")
 
     def get_user_by_id(self, user_id: str) -> Optional[AzureUser]:
         return self._users.get(user_id)
@@ -300,7 +300,7 @@ class AzureDevOpsProvider(ProviderBase):
 
         # Filter items by type
         if "itemType" in query_filter:
-            items = [item for item in items if item["System.WorkItemType"] in query_filter["itemType"]]
+            items = [item for item in items if item["fields"]["System.WorkItemType"] in query_filter["itemType"]]
 
         return items
 
@@ -315,23 +315,25 @@ class AzureDevOpsProvider(ProviderBase):
         Additionally we have to add the workitem as child to the destination query workitem.
 
         Args:
-            item_type: The internal type of data inside of data and the item type to create, e.g. "items:Feature"
+            item_type: The internal type of data to create, e.g. "Feature"
             query: The destination query from the configuration of the sync rule
             data: Plain object; already run through the transformation and mapping to be in the right format
             dry_run: If True, the data will not be created but the operation will be logged
         """
-        # Get the project id
-        project_id = query.filter["project"]
-        if not project_id:
-            raise ValueError("project has to be provided")
+        # Get the project name
+        project_name = query.filter["project"]
+        project = self._projects_by_name.get(project_name)
+        if not project:
+            raise ValueError(f"project {project_name} not found")
+        project_id = project["id"]
 
         # Get the destination work item
-        item_id = query.filter["itemId"]
-        parent_work_item_url = f"{self._config.organization_url}/_apis/wit/workitems/{item_id}"
-        if item_id:
+        parent_item_id = query.filter["parentItemId"]
+        parent_work_item_url = f"{self._config.organization_url}/_apis/wit/workitems/{parent_item_id}"
+        if parent_item_id:
             logger.debug("Destination work item", parent_work_item_url=parent_work_item_url)
         else:
-            logger.error("No parent relation will be created")
+            logger.info("No parent relation will be created")
 
         # Create the json patch document
         patch_document = []
@@ -352,7 +354,7 @@ class AzureDevOpsProvider(ProviderBase):
 
             patch_document.append({"op": "add", "path": f"/{key}", "value": correct_value})
 
-        if item_id:
+        if parent_item_id:
             patch_document.append(
                 {
                     "op": "add",
@@ -403,7 +405,7 @@ class AzureDevOpsProvider(ProviderBase):
         wiql_query = Wiql(query=" ".join(query_parts))
         try:
             query_result = self._work_item_client.query_by_wiql(wiql_query)
-            all_work_items = [self._work_item_client.get_work_item(wi.id).fields for wi in query_result.work_items]
+            all_work_items = [self._work_item_client.get_work_item(wi.id).as_dict() for wi in query_result.work_items]
             logger.debug(f"Retrieved {len(all_work_items)} work items for project {project_name}.")
             return all_work_items
         except Exception as e:

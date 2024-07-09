@@ -126,6 +126,19 @@
             "createdAt": "fields.[System.CreatedDate]",
             "modifiedAt": "fields.[System.ChangedDate]"
           }
+        },
+        "User Story": {
+          "type": "item",
+          "fields": {
+            "id": "id",
+            "project": "fields.[System.TeamProject]",
+            "name": "fields.[System.Title]",
+            "description": "fields.[System.Description]",
+            "createdAt": "fields.[System.CreatedDate]",
+            "createdBy": "fields.[System.CreatedBy].uniqueName",
+            "modifiedAt": "fields.[System.ChangedDate]",
+            "modifiedBy": "fields.[System.ChangedBy].uniqueName"
+          }
         }
       }
     }
