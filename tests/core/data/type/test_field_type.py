@@ -13,6 +13,8 @@ from sync_tool.core.types import (
     extract_attachments,
     FieldTypeRichText,
     RichTextValue,
+    FieldTypeSyncStatus,
+    SyncStatusValue,
 )
 
 
@@ -192,7 +194,7 @@ def test_validate_value_invalid_rich_text():
     assert str(context.value) == "Field test_field value 123 is not a string"
 
 
-def test_validate_value_empty_string():
+def test_validate_value_empty_string_rich_text():
     # Given
     field = FieldTypeRichText(name="test_field", type="richtext")
     value = ""
@@ -227,6 +229,57 @@ def test_validate_value_multiple_attachments():
     ]
 
 
+def test_validate_value_valid_sync_status():
+    # Given
+    field = FieldTypeSyncStatus(name="test_field", type="syncStatus")
+    value = '<p>This is a <strong>rich text</strong> value.</p><img src="https://example.com/image.jpg" alt="image" />'
+
+    # When
+    result = field.validate_value(value)
+
+    # Then
+    assert isinstance(result, SyncStatusValue)
+    assert result.value == value
+
+
+def test_validate_value_valid_none_sync_status():
+    # Given
+    field = FieldTypeSyncStatus(name="test_field", type="syncStatus")
+    value = None
+
+    # When
+    result = field.validate_value(value)
+
+    # Then
+    assert isinstance(result, SyncStatusValue)
+    assert result.value == ""
+
+
+def test_validate_value_invalid_sync_status():
+    # Given
+    field = FieldTypeSyncStatus(name="test_field", type="syncStatus")
+    value = 123
+
+    # When/Then
+    with pytest.raises(ValueError) as context:
+        field.validate_value(value)
+
+    assert str(context.value) == "Field test_field value 123 is not a string"
+
+
+def test_validate_value_empty_string_sync_status():
+    # Given
+    field = FieldTypeSyncStatus(name="test_field", type="syncStatus")
+    value = ""
+
+    # When
+    result = field.validate_value(value)
+
+    # Then
+    assert isinstance(result, SyncStatusValue)
+    assert result.value == value
+
+
 def test_create_field_type_int():
     field = create_field_type(type="int", name="test")
     assert isinstance(field, FieldTypeInt)
@@ -255,6 +308,11 @@ def test_create_field_type_reference():
 def test_create_field_type_rich_text():
     field = create_field_type(type="richtext", name="test")
     assert isinstance(field, FieldTypeRichText)
+
+
+def test_create_field_type_sync_status():
+    field = create_field_type(type="syncStatus", name="test")
+    assert isinstance(field, FieldTypeSyncStatus)
 
 
 def test_create_field_type_unknown():
