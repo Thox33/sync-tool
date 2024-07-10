@@ -6,7 +6,7 @@ import typer
 from rich.progress import Progress, SpinnerColumn, TextColumn, track
 
 from sync_tool.configuration import load_configuration
-from sync_tool.core.data.data_store import InternalTypeStorage
+from sync_tool.core.data import InternalTypeStorage
 from sync_tool.logging import configure_logging
 
 # setup loggers
@@ -125,7 +125,7 @@ def data_get(
         raise typer.Exit(code=1)
 
     # Validate data and store in internal storage
-    internal_storage_source = InternalTypeStorage(provider_name=rule.source.provider, internal_type=internal_type)
+    internal_storage_source = InternalTypeStorage(provider=provider_source_instance, internal_type=internal_type)
     validation_exceptions = []
     for item in track(mapped_source_items, description="Validating data..."):
         try:
