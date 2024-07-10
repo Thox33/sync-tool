@@ -6,7 +6,7 @@ import typer
 from rich.progress import Progress, SpinnerColumn, TextColumn, track
 
 from sync_tool.configuration import load_configuration
-from sync_tool.core.data import InternalTypeStorage
+from sync_tool.core.data import DataStore, InternalTypeStorage
 from sync_tool.logging import configure_logging
 
 # setup loggers
@@ -144,14 +144,29 @@ def data_get(
 
     typer.echo(f"Data retrieved for rule '{rule_name}': {len(source_data)} items")
 
+    # Prepare destination internal storage
+    internal_storage_destination = InternalTypeStorage(
+        provider=provider_destination_instance, internal_type=internal_type
+    )
+
+    # Create data store to handle data checks
+    data_store = DataStore()
+    data_store.add_storage(storage=internal_storage_source, storage_type=DataStore.StorageType.SOURCE)
+    data_store.add_storage(storage=internal_storage_destination, storage_type=DataStore.StorageType.DESTINATION)
+    if not data_store.is_ready():
+        typer.echo("Data store is not ready!")
+        raise typer.Exit(code=1)
+
+    # Get items to be created
+    items_to_be_created = data_store.get_items_to_be_created()
+    typer.echo(f"Items to be created: {len(items_to_be_created)}")
+
     # Transform data of fields from one provider to another
 
     # Map data from internal storage format to external format of specific provider
     mapped_destination_items = []
     mapping_destination_exceptions = []
-    for item in track(
-        internal_storage_source.get(), description="Mapping data from internal storage to destination format..."
-    ):
+    for item in track(items_to_be_created, description="Mapping data from internal storage to destination format..."):
         try:
             item = provider_destination.map_internal_data_to_raw_format(rule.destination.mapping, item)
             mapped_destination_items.append(item)
