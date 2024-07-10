@@ -125,11 +125,11 @@ def data_get(
         raise typer.Exit(code=1)
 
     # Validate data and store in internal storage
-    internal_storage = InternalTypeStorage(provider_name=rule.source.provider, internal_type=internal_type)
+    internal_storage_source = InternalTypeStorage(provider_name=rule.source.provider, internal_type=internal_type)
     validation_exceptions = []
     for item in track(mapped_source_items, description="Validating data..."):
         try:
-            internal_storage.store_data(item)
+            internal_storage_source.store_data(item)
         except Exception as e:
             validation_exceptions.append(e)
     if len(validation_exceptions) > 0:
@@ -150,7 +150,7 @@ def data_get(
     mapped_destination_items = []
     mapping_destination_exceptions = []
     for item in track(
-        internal_storage.get(), description="Mapping data from internal storage to destination format..."
+        internal_storage_source.get(), description="Mapping data from internal storage to destination format..."
     ):
         try:
             item = provider_destination.map_internal_data_to_raw_format(rule.destination.mapping, item)
