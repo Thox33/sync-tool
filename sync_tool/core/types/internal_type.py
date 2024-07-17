@@ -12,16 +12,18 @@ class InternalType(BaseModel):
 
     name: str
     fields: List[FieldTypes] = Field(..., discriminator="type")
-    # TODO: Remove data from InternalType and create a separate class for it
-    data: Dict[str, Dict[str, Any]] = Field(default_factory=dict)  # Dict[provider_name, Dict[field_name, field_value]]
 
-    def store_data(self, provider_name: str, data: Dict[str, Any]) -> None:
-        """Validates and then stores data from a provider in the internal type.
+    def validate_value(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Validates and then returns coerced data.
 
         Args:
-            provider_name (str): Name of the provider.
-            data (Dict[str, Any]): Data to store in the internal type.
+            data (Dict[str, Any]): Data to validate against this internal type.
+
+        Returns:
+            Dict[str, Any]: Coerced data.
         """
+
+        coerced_data = {}
 
         # Validate data
         validation_exceptions: List[Exception] = []
@@ -31,17 +33,14 @@ class InternalType(BaseModel):
                 continue
 
             try:
-                field.validate_value(data[field.name])
+                coerced_data[field.name] = field.validate_value(data[field.name])
             except ValueError as e:
                 validation_exceptions.append(e)
 
         if validation_exceptions:
-            raise ExceptionGroup(
-                f"Validation for provider {provider_name} with data {data} failed", validation_exceptions
-            )
+            raise ExceptionGroup(f"Validation with data {data} failed", validation_exceptions)
 
-        # Store data
-        self.data[provider_name] = data
+        return coerced_data
 
 
 def create_internal_type(name: str, fields: Dict[str, Any], possible_other_types: List[str]) -> InternalType:

@@ -3,11 +3,11 @@ from typing import Annotated
 
 import structlog
 import typer
-from rich.progress import Progress, SpinnerColumn, TextColumn, track
+from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from sync_tool.configuration import load_configuration
-from sync_tool.core.data import DataStore, InternalTypeStorage
 from sync_tool.logging import configure_logging
+from sync_tool.sync_controller import SyncController
 
 # setup loggers
 configure_logging(is_console=True)
@@ -62,87 +62,33 @@ def data_get(
         typer.echo(f"Rule '{rule_name}' not found in sync '{sync_name}'.")
         raise typer.Exit(code=1)
 
-    # Getting internal type
-    internal_type = config.get_internal_type(rule.type)
-    if internal_type is None:
-        typer.echo(f"Internal type '{rule.type}' not found in configuration.")
-        raise typer.Exit(code=1)
+    # Setup sync controller
+    sync_controller = SyncController(configuration=config, sync_rule=rule)
 
-    # Getting source provider
-    provider_source = config.get_provider(rule.source.provider)
-    if provider_source is None:
-        typer.echo(f"Provider '{rule.source.provider}' not found in configuration.")
-        raise typer.Exit(code=1)
-    # Prepare source provider
-    try:
-        provider_source_instance = provider_source.make_instance()
-        asyncio.run(provider_source_instance.init())
-    except Exception as e:
-        typer.echo(f"Could not initialize provider '{rule.source.provider}': {e}")
-        raise typer.Exit(code=1)
-
-    # Getting destination provider
-    provider_destination = config.get_provider(rule.destination.provider)
-    if provider_destination is None:
-        typer.echo(f"Provider '{rule.destination.provider}' not found in configuration.")
-        raise typer.Exit(code=1)
-    # Prepare destination provider
-    try:
-        provider_destination_instance = provider_destination.make_instance()
-        asyncio.run(provider_destination_instance.init())
-    except Exception as e:
-        typer.echo(f"Could not initialize provider '{rule.destination.provider}': {e}")
-        raise typer.Exit(code=1)
-
-    # Retrieve data based on sync rule source
+    # Prepare sync controller
     try:
         with Progress(
             SpinnerColumn(), TextColumn("[progress.description]{task.description}"), transient=True
         ) as progress:
-            task = progress.add_task(f"Retrieving data for rule '{rule_name}'...", total=1)
-            source_data = asyncio.run(
-                provider_source_instance.get_data(item_type=rule.source.mapping, query=rule.source.query)
-            )
+            task = progress.add_task(f"Preparing sync controller for '{rule_name}'...", total=1)
+            asyncio.run(sync_controller.init())
             progress.update(task, completed=1)
     except Exception as e:
-        typer.echo(f"Could not retrieve data for rule '{rule_name}': {e}")
+        typer.echo(f"Could not prepare sync controller for rule '{rule_name}': {e}")
         raise typer.Exit(code=1)
 
-    # Map source data to internal type
-    mapped_source_items = []
-    mapping_source_exceptions = []
-    for item in track(source_data, description="Mapping data from source to internal storage format..."):
-        try:
-            item = provider_source.map_raw_data_to_internal_format(rule.source.mapping, item)
-            mapped_source_items.append(item)
-        except Exception as e:
-            mapping_source_exceptions.append((item, e))
-    if len(mapping_source_exceptions) > 0:
-        for item, mapping_exception in mapping_source_exceptions:
-            logger.error(f"Mapping failed for item '{item}': {mapping_exception}")
+    # Perform sync using sync controller
+    try:
+        with Progress(
+            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), transient=True
+        ) as progress:
+            task = progress.add_task(f"Syncing data for '{rule_name}'...", total=1)
+            asyncio.run(sync_controller.sync(dry_run=dry_run))
+            progress.update(task, completed=1)
+    except Exception as e:
+        typer.echo(f"Could not sync data for rule '{rule_name}': {e}")
 
-        typer.echo(f"Mapping failed for some items {len(mapping_source_exceptions)}!")
-        raise typer.Exit(code=1)
-
-    # Validate data and store in internal storage
-    internal_storage_source = InternalTypeStorage(provider=provider_source_instance, internal_type=internal_type)
-    validation_exceptions = []
-    for item in track(mapped_source_items, description="Validating data..."):
-        try:
-            internal_storage_source.store_data(item)
-        except Exception as e:
-            validation_exceptions.append(e)
-    if len(validation_exceptions) > 0:
-        for validation_exception in validation_exceptions:
-            logger.exception(validation_exception)
-            if isinstance(validation_exception, ExceptionGroup):
-                for exception in validation_exception.exceptions:
-                    logger.error(exception)
-
-        typer.echo(f"Validation failed for some items {len(validation_exceptions)}!")
-        raise typer.Exit(code=1)
-
-    typer.echo(f"Data retrieved for rule '{rule_name}': {len(source_data)} items")
+    """
 
     # Prepare destination internal storage
     internal_storage_destination = InternalTypeStorage(
@@ -197,15 +143,13 @@ def data_get(
         typer.echo(f"Creating failed for some items {len(creating_destination_exceptions)}!")
         raise typer.Exit(code=1)
 
+    """
+
     # Teardown providers
     try:
-        asyncio.run(provider_destination_instance.teardown())
-    except Exception as e:
-        typer.echo(f"Could not teardown provider '{rule.destination.provider}': {e}")
-    try:
-        asyncio.run(provider_source_instance.teardown())
-    except Exception as e:
-        typer.echo(f"Could not teardown provider '{rule.source.provider}': {e}")
+        asyncio.run(sync_controller.teardown())
+    except Exception:
+        typer.echo("Could not teardown sync controller")
         raise typer.Exit(code=1)
 
 
