@@ -5,6 +5,14 @@ from pydantic import BaseModel, Field
 from sync_tool.core.types.field_type import FieldTypeReference, FieldTypes, create_field_type
 
 
+class InternalTypeOptions(BaseModel):
+    """Options for internal type.
+    Can be used to configure the comparable fields.
+    """
+
+    comparableFields: List[str] = Field(default_factory=list)
+
+
 class InternalType(BaseModel):
     """Configurable internal type to work as an connection point between all of the provider data sources.
     Providing validation through fields. Stores data as simple dictionary. Is able to
@@ -12,6 +20,7 @@ class InternalType(BaseModel):
 
     name: str
     fields: List[FieldTypes] = Field(..., discriminator="type")
+    options: InternalTypeOptions
 
     def validate_value(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Validates and then returns coerced data.
@@ -43,12 +52,15 @@ class InternalType(BaseModel):
         return coerced_data
 
 
-def create_internal_type(name: str, fields: Dict[str, Any], possible_other_types: List[str]) -> InternalType:
+def create_internal_type(
+    name: str, fields: Dict[str, Any], options: Dict[str, Any], possible_other_types: List[str]
+) -> InternalType:
     """Create a new internal type object with the given name and fields.
 
     Args:
         name (str): Name of the internal type.
         fields (Dict[str, Any]): Fields of the internal type.
+        options (Dict[str, Any]): Options for the internal type.
         possible_other_types (List[str]): List of possible other internal types to validate reference fields.
 
     Returns:
@@ -66,5 +78,8 @@ def create_internal_type(name: str, fields: Dict[str, Any], possible_other_types
                     f"Reference type {field.reference_type} is not available. Others: {possible_other_types}"
                 )
 
+    # Prepare options
+    internal_type_options = InternalTypeOptions(**options)
+
     # Create and return the internal type
-    return InternalType(name=name, fields=prepared_fields)
+    return InternalType(name=name, fields=prepared_fields, options=internal_type_options)

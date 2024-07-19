@@ -50,9 +50,14 @@ class Configuration(BaseModel):
         for type_name, type_data in types_to_convert.items():
             if "fields" not in type_data:
                 raise ValueError(f"Missing 'fields' in type {type_name}")
+            if "options" not in type_data:
+                type_data["options"] = {}
 
             types[type_name] = create_internal_type(
-                name=type_name, fields=type_data["fields"], possible_other_types=possible_internal_types
+                name=type_name,
+                fields=type_data["fields"],
+                options=type_data["options"],
+                possible_other_types=possible_internal_types,
             )
 
         return types
