@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from sync_tool.core.provider.provider_base import ProviderBase
 from sync_tool.core.sync.sync_rule import SyncRuleDestination, SyncRuleQuery, SyncRuleSource
-from sync_tool.core.types import RichTextValue
+from sync_tool.core.types import RichTextValue, SyncStatusValue
 
 logger = structlog.getLogger(__name__)
 
@@ -113,6 +113,17 @@ class JamaProvider(ProviderBase):
         self._projects_by_id = projects_normalized_by_id
         self._projects_by_name = projects_normalized_by_name
         logger.debug("loaded projects", projects=self._projects_by_id)
+
+    async def get_item_url_for_id(self, unique_id: str) -> str:
+        """Return the URL to the item in the provider.
+
+        Args:
+            unique_id: The unique id of the item.
+
+        Returns:
+            str: The URL to the item.
+        """
+        return f"{self._config.url}/perspective.req#/items/{unique_id}"
 
     def validate_sync_rule_source(self, source: SyncRuleSource) -> None:
         """Validates the source of a sync rule that it at least should contain project (array),
@@ -301,9 +312,24 @@ class JamaProvider(ProviderBase):
 
         return items
 
+    async def get_data_by_id(self, item_type: str, unique_id: str) -> None | Dict[str, Any]:
+        """Get data from the provider by using the id.
+
+        Will be called to get data from the provider.
+
+        Args:
+            item_type: The source to get the data from.
+            unique_id: The id of the item to get.
+        """
+        try:
+            item = self._client.get_item(item_id=unique_id)
+            return item
+        except ResourceNotFoundException:
+            return None
+
     async def create_data(
         self, item_type: str, query: SyncRuleQuery, data: Dict[str, Any], dry_run: bool = False
-    ) -> None:
+    ) -> None | str:
         """
         Create data in the provider. For the jama items we have to create an json object.
         Format:
@@ -328,6 +354,9 @@ class JamaProvider(ProviderBase):
             query: The destination query from the configuration of the sync rule
             data: Plain object; already run through the transformation and mapping to be in the right format
             dry_run: If True, the data will not be created but the operation will be logged
+
+        Returns:
+            str: The unique id of the created item
         """
 
         # Get the project name
@@ -356,6 +385,8 @@ class JamaProvider(ProviderBase):
             elif isinstance(value, RichTextValue):
                 # @TODO: For now we only use the string value without inline attachment handling
                 correct_value = value.value
+            elif isinstance(value, SyncStatusValue):
+                correct_value = value.get_value()
             fields[key] = correct_value
 
         # Create the item
@@ -376,6 +407,9 @@ class JamaProvider(ProviderBase):
                 fields=item_data["fields"],
             )
             logger.debug("Created item", itemId=item_id)
+            return str(item_data)
+
+        return None
 
     async def teardown(self) -> None:
         pass

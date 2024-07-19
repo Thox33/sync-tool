@@ -192,6 +192,12 @@ class SyncStatusValue(BaseModel):
     value: str
     entries: List[SyncStatusValueEntry] = []
 
+    def get_value(self) -> str:
+        """Get the value of the sync status correctly built from the entries"""
+        new_value = "".join([f'<a href="{entry["url"]}">{entry["id"]}</a>' for entry in self.entries])
+        self.value = new_value
+        return new_value
+
 
 class FieldTypeSyncStatus(FieldType[SyncStatusValue]):
     """Internal representation of an rich text field representing the current synchonrization status using html tags.

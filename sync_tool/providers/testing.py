@@ -25,9 +25,12 @@ class TestingProvider(ProviderBase):
     async def get_data(self, item_type: str, query: SyncRuleQuery) -> List[Dict[str, Any]]:
         return []
 
+    async def get_data_by_id(self, item_type: str, unique_id: str) -> None | Dict[str, Any]:
+        return None
+
     async def create_data(
         self, item_type: str, query: SyncRuleQuery, data: Dict[str, Any], dry_run: bool = False
-    ) -> None:
+    ) -> None | str:
         pass
 
     async def teardown(self) -> None:

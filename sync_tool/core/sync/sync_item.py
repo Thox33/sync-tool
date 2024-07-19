@@ -17,6 +17,7 @@ class SyncItem(BaseModel):
         FETCHED = "fetched"  # Destination data has been fetched
         NEEDS_UPDATE = "needs_update"  # Source and destination data are different
         SYNCED = "synced"  # Source and destination in sync
+        FAILED = "failed"  # Something failed during the sync process
 
     source_data: Dict[str, Any]
     destination_data: Optional[Dict[str, Any]] = None
@@ -43,6 +44,22 @@ class SyncItem(BaseModel):
         """Add destination data to the sync item."""
         self.destination_data = destination_data
         self.update_state()
+
+    def get_source_data(self) -> Dict[str, Any]:
+        """Get the source data."""
+        return self.source_data
+
+    def get_destination_data(self) -> None | Dict[str, Any]:
+        """Get the destination data."""
+        return self.destination_data
+
+    def get_source_sync_id(self) -> None | str:
+        """Get the sync ID from the source data."""
+        if "syncStatus" in self.source_data:
+            sync_status: SyncStatusValue = self.source_data["syncStatus"]
+            if len(sync_status.entries) > 0:
+                return sync_status.entries[0]["id"]
+        return None  # Return None if sync status field is not present or empty
 
     def _destination_should_be_fetched(self) -> bool:
         """Checks if this item should be fetched from the destination provider.

@@ -88,63 +88,6 @@ def data_get(
     except Exception as e:
         typer.echo(f"Could not sync data for rule '{rule_name}': {e}")
 
-    """
-
-    # Prepare destination internal storage
-    internal_storage_destination = InternalTypeStorage(
-        provider=provider_destination_instance, internal_type=internal_type
-    )
-
-    # Create data store to handle data checks
-    data_store = DataStore()
-    data_store.add_storage(storage=internal_storage_source, storage_type=DataStore.StorageType.SOURCE)
-    data_store.add_storage(storage=internal_storage_destination, storage_type=DataStore.StorageType.DESTINATION)
-    if not data_store.is_ready():
-        typer.echo("Data store is not ready!")
-        raise typer.Exit(code=1)
-
-    # Get items to be created
-    items_to_be_created = data_store.get_items_to_be_created()
-    typer.echo(f"Items to be created: {len(items_to_be_created)}")
-
-    # Transform data of fields from one provider to another
-
-    # Map data from internal storage format to external format of specific provider
-    mapped_destination_items = []
-    mapping_destination_exceptions = []
-    for item in track(items_to_be_created, description="Mapping data from internal storage to destination format..."):
-        try:
-            item = provider_destination.map_internal_data_to_raw_format(rule.destination.mapping, item)
-            mapped_destination_items.append(item)
-        except Exception as e:
-            mapping_destination_exceptions.append((item, e))
-    if len(mapping_destination_exceptions) > 0:
-        for item, mapping_exception in mapping_destination_exceptions:
-            logger.error(f"Mapping failed for item '{item}': {mapping_exception}")
-
-        typer.echo(f"Mapping failed for some items {len(mapping_destination_exceptions)}!")
-        raise typer.Exit(code=1)
-
-    # Create data in destination provider
-    creating_destination_exceptions = []
-    for item in track(mapped_destination_items, description=f"Creating data{' (dry run)' if dry_run else ''}..."):
-        try:
-            asyncio.run(
-                provider_destination_instance.create_data(
-                    item_type=rule.destination.mapping, query=rule.destination.query, data=item, dry_run=dry_run
-                )
-            )
-        except Exception as e:
-            creating_destination_exceptions.append((item, e))
-    if len(creating_destination_exceptions) > 0:
-        for item, creating_exception in creating_destination_exceptions:
-            logger.error(f"Creating failed for item '{item}': {creating_exception}")
-
-        typer.echo(f"Creating failed for some items {len(creating_destination_exceptions)}!")
-        raise typer.Exit(code=1)
-
-    """
-
     # Teardown providers
     try:
         asyncio.run(sync_controller.teardown())

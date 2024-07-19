@@ -185,6 +185,24 @@ class AzureDevOpsProvider(ProviderBase):
         self._users = normalized_users
         logger.debug("loaded users", users=self._users)
 
+    async def get_item_url_for_id(self, unique_id: str) -> str:
+        """Return the URL to the item in the provider.
+
+        Args:
+            unique_id: The unique id of the item.
+
+        Returns:
+            str: The URL to the item.
+        """
+        work_item = self._work_item_client.get_work_item(id=int(unique_id))
+        if work_item is None:
+            raise ValueError(f"Work item with ID {unique_id} not found")
+
+        # Grap the project name from the work item
+        project_name = work_item.fields["System.TeamProject"]
+
+        return f"{self._config.organization_url}/{project_name}/_workitems/edit/{unique_id}/"
+
     def validate_sync_rule_source(self, source: SyncRuleSource) -> None:
         """Validates the source of a sync rule that it at least should contain project (array),
         itemType (array), documentKey (array) or release (array). Multiple values are allowed.
@@ -304,9 +322,33 @@ class AzureDevOpsProvider(ProviderBase):
 
         return items
 
+    async def get_data_by_id(self, item_type: str, unique_id: str) -> None | Dict[str, Any]:
+        """Get data from the provider by using the id.
+
+        Will be called to get data from the provider.
+
+        Args:
+            item_type: The source to get the data from.
+            unique_id: The id of the item to get.
+
+        Returns:
+            Dict[str, Any]: The data
+            None: If the item was not found
+
+        Raises:
+            ValueError: If the item_type is invalid or not supported by this provider.
+            ProviderGetDataError: If the data could not be retrieved.
+        """
+        try:
+            work_item = self._work_item_client.get_work_item(id=int(unique_id)).as_dict()
+            return work_item
+        except Exception as e:
+            logger.error(f"Failed to get work item {unique_id}: {str(e)}")
+            return None
+
     async def create_data(
         self, item_type: str, query: SyncRuleQuery, data: Dict[str, Any], dry_run: bool = False
-    ) -> None:
+    ) -> None | str:
         """
         Create data in the provider. For the azure devops workitems we have to create an json patch document.
         Which itself is an array of operations. As we create data in the destination we only have add operations.
@@ -319,6 +361,9 @@ class AzureDevOpsProvider(ProviderBase):
             query: The destination query from the configuration of the sync rule
             data: Plain object; already run through the transformation and mapping to be in the right format
             dry_run: If True, the data will not be created but the operation will be logged
+
+        Returns:
+            str: The unique id of the created item
         """
         # Get the project name
         project_name = query.filter["project"]
@@ -348,9 +393,11 @@ class AzureDevOpsProvider(ProviderBase):
             correct_value = value
             if isinstance(value, datetime):
                 correct_value = value.isoformat()
-            elif isinstance(value, RichTextValue | SyncStatusValue):
+            elif isinstance(value, RichTextValue):
                 # @TODO: For now we only use the string value without inline attachment handling
                 correct_value = value.value
+            elif isinstance(value, SyncStatusValue):
+                correct_value = value.get_value()
 
             patch_document.append({"op": "add", "path": f"/{key}", "value": correct_value})
 
@@ -373,6 +420,9 @@ class AzureDevOpsProvider(ProviderBase):
                 bypass_rules=True,  # Needed to create as another user and also set the correct dates
             )
             logger.debug("Created work item", work_item_id=work_item.id, work_item=work_item)
+            return str(work_item.id)
+
+        return None
 
     def get_work_items(
         self,
