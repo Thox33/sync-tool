@@ -74,7 +74,8 @@ class SyncController:
             sync_iteration += 1
             if sync_iteration > max_sync_iterations:
                 logger.error("Maximal sync iterations reached!")
-                break
+                raise RuntimeError("Maximal sync iterations reached!")
+
             logger.debug(f"Sync iteration {sync_iteration}...")
 
             # Get the next sync item from the work queue and perform sync operation
@@ -106,12 +107,18 @@ class SyncController:
         """
 
         try:
-            # Check if the destination item should be created
+            # Check if the destination item should be created -> then create it
             if item.sync_status == SyncItem.SyncStatus.NEW:
                 item = await self._sync_item_create(item, dry_run=dry_run)
-            # Check if the destination item should be fetched
+            # Check if the destination item should be fetched -> then fetch it
             elif item.sync_status == SyncItem.SyncStatus.SHOULD_FETCH:
                 item = await self._sync_item_fetch(item)
+            # Check if the source and destination item should be updated -> then compare it
+            elif item.sync_status == SyncItem.SyncStatus.FETCHED:
+                item = await self._sync_item_compare(item)
+            # Check if the source and destination item should are out of sync -> then update both sides
+            elif item.sync_status == SyncItem.SyncStatus.NEEDS_UPDATE:
+                pass  # TODO
 
             item.update_state()
         except Exception as e:
@@ -198,6 +205,9 @@ class SyncController:
             "Sync ID added to source data", item=item.model_dump_json(), sync_status=sync_status_value_destination
         )
 
+        # Patch source data in source provider
+        # TODO
+
         # Update sync item status
         item.sync_status = SyncItem.SyncStatus.SHOULD_FETCH
 
@@ -212,6 +222,8 @@ class SyncController:
         Returns:
             SyncItem: The updated sync item
         """
+        logger.debug("Fetching destination data...", item=item.model_dump_json())
+
         destination_sync_status_id = item.get_source_sync_id()
         if destination_sync_status_id is None:
             raise RuntimeError("Destination sync ID is missing in source data!")
@@ -226,8 +238,52 @@ class SyncController:
         except Exception as e:
             raise RuntimeError(f"Could not fetch destination item '{destination_sync_status_id}': {e}")
 
+        logger.debug("Destination data fetched!", item=item.model_dump_json(), destination_item=destination_item)
+
+        # Map destination data to internal type
+        mapped_destination_items = self._map_items_to_internal_type([destination_item], is_source=False)
+
+        # Validate and coerce data
+        coerced_destination_items = self._validate_and_coerce_items(mapped_destination_items)
+
         # Add destination data to sync item
-        item.add_destination_data(destination_item)
+        if len(coerced_destination_items) == 0:
+            raise RuntimeError("No destination data found!")
+        if len(coerced_destination_items) > 1:
+            raise RuntimeError("More than one destination data found!")
+
+        item.add_destination_data(coerced_destination_items[0])
+
+        return item
+
+    async def _sync_item_compare(self, item: SyncItem) -> SyncItem:
+        """Compare the source and destination item for the sync item based on the
+        comparable fields of the internal type."""
+        logger.debug("Comparing source and destination data...", item=item.model_dump_json())
+
+        source_data = item.get_source_data()
+        destination_data = item.get_destination_data()
+        if destination_data is None:
+            raise RuntimeError("Destination data is missing!")
+
+        # Compare source and destination data based on the comparable fields
+        needs_sync = False
+        comparable_fields = self._internal_type.options.comparableFields
+        for field in comparable_fields:
+            if source_data[field] != destination_data[field]:
+                logger.debug(
+                    f"Source and destination data for field {field} are not equal!",
+                    source_value=source_data[field],
+                    destination_value=destination_data[field],
+                )
+                needs_sync = True
+
+        if needs_sync:
+            item.needs_update()
+            logger.debug("Source and destination data are different!", item=item.model_dump_json())
+        else:
+            item.synced()
+            logger.debug("Source and destination data are equal!", item=item.model_dump_json())
 
         return item
 
@@ -372,6 +428,7 @@ class SyncController:
     async def _prepare_sync_items(self, source_data: List[Dict[str, Any]]) -> List[SyncItem]:
         """Prepare sync items based on the source data."""
         logger.debug("Preparing sync items...")
+
         sync_items = [SyncItem(source_data=item) for item in source_data]
         # Run first sync item state update
         for item in sync_items:

@@ -41,26 +41,31 @@ def data_get(
     rule_name: Annotated[str, typer.Argument(help="Name of the rule to validate")],
     dry_run: Annotated[bool, typer.Option(help="Do not create synced data in destination provider")] = True,
 ) -> None:
-    typer.echo("Validating sync rule...")
+    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), transient=True) as progress:
+        task = progress.add_task("Initializing sync-tool...", total=1)
 
-    # Load configuration
-    try:
-        config = load_configuration()
-    except Exception as e:
-        typer.echo(f"Configuration is invalid: {e}")
-        raise typer.Exit(code=1)
+        typer.echo("Validating sync rule...")
 
-    # Getting sync configuration
-    sync = config.get_sync(sync_name)
-    if sync is None:
-        typer.echo(f"Sync '{sync_name}' not found in configuration.")
-        raise typer.Exit(code=1)
+        # Load configuration
+        try:
+            config = load_configuration()
+        except Exception as e:
+            typer.echo(f"Configuration is invalid: {e}")
+            raise typer.Exit(code=1)
 
-    # Getting sync rule
-    rule = sync.get_rule(rule_name)
-    if rule is None:
-        typer.echo(f"Rule '{rule_name}' not found in sync '{sync_name}'.")
-        raise typer.Exit(code=1)
+        # Getting sync configuration
+        sync = config.get_sync(sync_name)
+        if sync is None:
+            typer.echo(f"Sync '{sync_name}' not found in configuration.")
+            raise typer.Exit(code=1)
+
+        # Getting sync rule
+        rule = sync.get_rule(rule_name)
+        if rule is None:
+            typer.echo(f"Rule '{rule_name}' not found in sync '{sync_name}'.")
+            raise typer.Exit(code=1)
+
+        progress.update(task, completed=1)
 
     # Setup sync controller
     sync_controller = SyncController(configuration=config, sync_rule=rule)

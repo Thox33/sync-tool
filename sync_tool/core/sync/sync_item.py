@@ -33,13 +33,6 @@ class SyncItem(BaseModel):
         if self.sync_status == SyncItem.SyncStatus.SHOULD_FETCH and self.destination_data is not None:
             self.sync_status = SyncItem.SyncStatus.FETCHED
 
-        # Next compare source and destination data based on provided rules
-        # if self.sync_status == SyncItem.SyncStatus.FETCHED:
-        #     if self.source_data != self.destination_data:
-        #         self.sync_status = SyncItem.SyncStatus.NEEDS_UPDATE
-        #     else:
-        #         self.sync_status = SyncItem.SyncStatus.SYNCED
-
     def add_destination_data(self, destination_data: Dict[str, Any]) -> None:
         """Add destination data to the sync item."""
         self.destination_data = destination_data
@@ -52,6 +45,14 @@ class SyncItem(BaseModel):
     def get_destination_data(self) -> None | Dict[str, Any]:
         """Get the destination data."""
         return self.destination_data
+
+    def needs_update(self) -> None:
+        """Sets the sync status to needs update."""
+        self.sync_status = SyncItem.SyncStatus.NEEDS_UPDATE
+
+    def synced(self) -> None:
+        """Sets the sync status to synced."""
+        self.sync_status = SyncItem.SyncStatus.SYNCED
 
     def get_source_sync_id(self) -> None | str:
         """Get the sync ID from the source data."""
