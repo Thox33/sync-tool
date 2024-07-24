@@ -45,6 +45,18 @@ class ProviderBase(metaclass=ABCMeta):
         raise NotImplementedError()
 
     @abstractmethod
+    async def get_item_url_for_id(self, unique_id: str) -> str:
+        """Return the URL to the item in the provider.
+
+        Args:
+            unique_id: The unique id of the item.
+
+        Returns:
+            str: The URL to the item.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
     def validate_sync_rule_source(self, source: SyncRuleSource) -> None:
         """Validate the source of a sync rule.
 
@@ -92,9 +104,29 @@ class ProviderBase(metaclass=ABCMeta):
         raise NotImplementedError()
 
     @abstractmethod
+    async def get_data_by_id(self, item_type: str, unique_id: str) -> None | Dict[str, Any]:
+        """Get data from the provider by using the id.
+
+        Will be called to get data from the provider.
+
+        Args:
+            item_type: The source to get the data from.
+            unique_id: The id of the item to get.
+
+        Returns:
+            Dict[str, Any]: The data
+            None: If the item was not found
+
+        Raises:
+            ValueError: If the item_type is invalid or not supported by this provider.
+            ProviderGetDataError: If the data could not be retrieved.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
     async def create_data(
         self, item_type: str, query: SyncRuleQuery, data: Dict[str, Any], dry_run: bool = False
-    ) -> None:
+    ) -> None | str:
         """
         Create data in the provider.
         Additionally we have to add the workitem as child to the destination query workitem.
@@ -104,6 +136,9 @@ class ProviderBase(metaclass=ABCMeta):
             query: The destination query from the configuration of the sync rule
             data: Plain object; already run through the transformation and mapping to be in the right format
             dry_run: If True, the data will not be created but the operation will be logged
+
+        Returns:
+            str: The unique id of the created item
         """
         raise NotImplementedError()
 

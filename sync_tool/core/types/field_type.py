@@ -3,9 +3,10 @@ from __future__ import annotations
 import re
 from abc import ABCMeta, abstractmethod
 from datetime import datetime
-from typing import Any, Generic, Literal, Optional, TypeVar
+from typing import Any, Generic, List, Literal, Optional, TypeVar
 
 from pydantic import BaseModel
+from typing_extensions import TypedDict
 
 ValueT = TypeVar("ValueT")
 
@@ -159,14 +160,60 @@ class FieldTypeRichText(FieldType[RichTextValue]):
         return rich_text_value
 
 
+class SyncStatusValueEntry(TypedDict):
+    id: str
+    url: str
+
+
+def extract_sync_status_items(value: str) -> List[SyncStatusValueEntry]:
+    """Extract sync status items from the rich text value (html a) tag and store it as a list of SyncStatusValueEntry.
+
+    Example:
+        <a href="https://destination-system.com/itemId?id=XXX">XXX</a>
+        id: XXX
+        url: https://destination-system.com/itemId?id=XXX
+    """
+
+    regex = re.compile(
+        r'<a.*?href="(.*?)".*?>(.*?)</a>', re.IGNORECASE | re.MULTILINE
+    )  # Alternative: <a.+?\s*href\s*=\s*["\']?([^"\'\s>]+)["\']?>(.*)</a>
+    return [
+        {
+            "id": match[1],
+            "url": match[0],
+        }
+        for match in regex.findall(value)
+    ]
+
+
 class SyncStatusValue(BaseModel):
     """Internal representation of a sync status value"""
 
-    value: str  # We start with the simple value. This will later contain extra fields for ids, status, etc.
+    value: str
+    entries: List[SyncStatusValueEntry] = []
+
+    def get_value(self) -> str:
+        """Get the value of the sync status correctly built from the entries"""
+        new_value = "".join([f'<a href="{entry["url"]}">{entry["id"]}</a>' for entry in self.entries])
+        self.value = new_value
+        return new_value
 
 
 class FieldTypeSyncStatus(FieldType[SyncStatusValue]):
-    """Internal representation of an rich text field representing the current synchonrization status using html tags"""
+    """Internal representation of an rich text field representing the current synchonrization status using html tags.
+
+    Example html:
+    <a href="https://destination-system.com/itemId?id=XXX">XXX</a>
+
+    Example value:
+    [
+        {
+            "id": "XXX",
+            "url": "https://destination-system.com/itemId?id=XXX",
+        },
+        #... other sync status items...
+    ]
+    """
 
     type: Literal["syncStatus"]
 
@@ -178,6 +225,7 @@ class FieldTypeSyncStatus(FieldType[SyncStatusValue]):
             raise ValueError(f"Field {self.name} value {value} is not a string")
 
         sync_status_value = SyncStatusValue(value=value)
+        sync_status_value.entries = extract_sync_status_items(value)
 
         return sync_status_value
 

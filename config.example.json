@@ -31,6 +31,14 @@
           "type": "syncStatus",
           "default": ""
         }
+      },
+      "options": {
+        "comparableFields": [
+          "name",
+          "description",
+          "createdAt",
+          "modifiedAt"
+        ]
       }
     }
   },
@@ -81,7 +89,7 @@
           "fields": {
             "id": "id",
             "name": "fields.[System.Title]",
-            "description": "fields.description",
+            "description": "fields.[System.Description]",
             "createdAt": "fields.[System.CreatedDate]",
             "modifiedAt": "fields.[System.ChangedDate]",
             "syncStatus": "fields.SyncTool Status"
