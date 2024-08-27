@@ -38,6 +38,12 @@
           "description",
           "createdAt",
           "modifiedAt"
+        ],
+        "syncableFields": [
+          "name",
+          "description",
+          "createdAt",
+          "modifiedAt"
         ]
       }
     }

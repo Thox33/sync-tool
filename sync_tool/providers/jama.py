@@ -411,5 +411,28 @@ class JamaProvider(ProviderBase):
 
         return None
 
+    async def patch_data(self, item_type: str, unique_id: str, data: Dict[str, Any], dry_run: bool = False) -> None:
+        # Correct data inside of fields
+        fields = {}
+        for key, value in data["fields"].items():
+            correct_value = value
+            if isinstance(value, datetime):
+                correct_value = value.isoformat()
+            elif isinstance(value, RichTextValue):
+                # @TODO: For now we only use the string value without inline attachment handling
+                correct_value = value.value
+            elif isinstance(value, SyncStatusValue):
+                correct_value = value.get_value()
+            fields[key] = correct_value
+
+        # Prepare the patches
+        patches = []
+        for key, value in fields.items():
+            patches.append({"op": "add", "path": f"/fields/{key}", "value": value})
+        logger.debug("Patches", patches=patches)
+
+        if not dry_run:
+            self._client.patch_item(item_id=unique_id, patches=patches)
+
     async def teardown(self) -> None:
         pass

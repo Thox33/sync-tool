@@ -1,5 +1,6 @@
 from collections import deque
 from copy import deepcopy
+from datetime import datetime
 from typing import Any, Deque, Dict, List, Tuple
 
 import structlog
@@ -116,7 +117,7 @@ class SyncController:
             # Check if the source and destination item should be updated -> then compare it
             elif item.sync_status == SyncItem.SyncStatus.FETCHED:
                 item = await self._sync_item_compare(item)
-            # Check if the source and destination item should are out of sync -> then update both sides
+            # Check if the source and destination item are out of sync -> then update both sides
             elif item.sync_status == SyncItem.SyncStatus.NEEDS_UPDATE:
                 pass  # TODO
 
@@ -206,7 +207,16 @@ class SyncController:
         )
 
         # Patch source data in source provider
-        # TODO
+        data_to_patch = {
+            "syncStatus": sync_status_value_destination,
+        }
+        mapped_to_patch_items = self._map_internal_type_to_items([data_to_patch], is_source=True)
+        await self._provider_source_instance.patch_data(
+            item_type=self._rule.source.mapping,
+            unique_id=work_item_id_source,
+            data=mapped_to_patch_items[0],
+            dry_run=dry_run,
+        )
 
         # Update sync item status
         item.sync_status = SyncItem.SyncStatus.SHOULD_FETCH
@@ -271,12 +281,19 @@ class SyncController:
         comparable_fields = self._internal_type.options.comparableFields
         for field in comparable_fields:
             if source_data[field] != destination_data[field]:
-                logger.debug(
-                    f"Source and destination data for field {field} are not equal!",
-                    source_value=source_data[field],
-                    destination_value=destination_data[field],
-                )
-                needs_sync = True
+                # Special case: datetime fields (we allow a small difference of 5 minutes)
+                if isinstance(source_data[field], datetime) and isinstance(destination_data[field], datetime):
+                    if abs(source_data[field] - destination_data[field]).seconds > (5 * 60):
+                        needs_sync = True
+                else:
+                    needs_sync = True
+
+                if needs_sync:
+                    logger.debug(
+                        f"Source and destination data are different for field '{field}': "
+                        f"{source_data[field]} != {destination_data[field]}",
+                        item=item.model_dump_json(),
+                    )
 
         if needs_sync:
             item.needs_update()

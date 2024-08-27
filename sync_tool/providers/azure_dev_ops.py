@@ -424,6 +424,9 @@ class AzureDevOpsProvider(ProviderBase):
 
         return None
 
+    async def patch_data(self, item_type: str, unique_id: str, data: Dict[str, Any], dry_run: bool = False) -> None:
+        pass
+
     def get_work_items(
         self,
         project_name: str,

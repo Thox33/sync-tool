@@ -7,10 +7,11 @@ from sync_tool.core.types.field_type import FieldTypeReference, FieldTypes, crea
 
 class InternalTypeOptions(BaseModel):
     """Options for internal type.
-    Can be used to configure the comparable fields.
+    Can be used to configure the comparable or sync-able fields.
     """
 
     comparableFields: List[str] = Field(default_factory=list)
+    syncableFields: List[str] = Field(default_factory=list)
 
 
 class InternalType(BaseModel):

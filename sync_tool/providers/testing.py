@@ -33,5 +33,8 @@ class TestingProvider(ProviderBase):
     ) -> None | str:
         pass
 
+    async def patch_data(self, item_type: str, unique_id: str, data: Dict[str, Any], dry_run: bool = False) -> None:
+        pass
+
     async def teardown(self) -> None:
         pass
