@@ -142,12 +142,15 @@ class ProviderBase(metaclass=ABCMeta):
         raise NotImplementedError()
 
     @abstractmethod
-    async def patch_data(self, item_type: str, unique_id: str, data: Dict[str, Any], dry_run: bool = False) -> None:
+    async def patch_data(
+        self, item_type: str, query: SyncRuleQuery, unique_id: str, data: Dict[str, Any], dry_run: bool = False
+    ) -> None:
         """
         Patch data in the provider.
 
         Args:
             item_type: The internal type of data inside of data and the item type to patch, e.g. "items:Feature"
+            query: The destination query from the configuration of the sync rule
             unique_id: The unique id of the item to patch
             data: Plain object; already run through the transformation and mapping to be in the right format;
                 contains only fields that are part of syncableFields

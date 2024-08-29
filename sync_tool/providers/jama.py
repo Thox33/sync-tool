@@ -411,7 +411,9 @@ class JamaProvider(ProviderBase):
 
         return None
 
-    async def patch_data(self, item_type: str, unique_id: str, data: Dict[str, Any], dry_run: bool = False) -> None:
+    async def patch_data(
+        self, item_type: str, query: SyncRuleQuery, unique_id: str, data: Dict[str, Any], dry_run: bool = False
+    ) -> None:
         # Correct data inside of fields
         fields = {}
         for key, value in data["fields"].items():

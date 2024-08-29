@@ -424,8 +424,53 @@ class AzureDevOpsProvider(ProviderBase):
 
         return None
 
-    async def patch_data(self, item_type: str, unique_id: str, data: Dict[str, Any], dry_run: bool = False) -> None:
-        pass
+    async def patch_data(
+        self, item_type: str, query: SyncRuleQuery, unique_id: str, data: Dict[str, Any], dry_run: bool = False
+    ) -> None:
+        # Get the project name
+        project_name = query.filter["project"]
+        project = self._projects_by_name.get(project_name)
+        if not project:
+            raise ValueError(f"project {project_name} not found")
+        project_id = project["id"]
+
+        # Get the destination work item to get the current revision number
+        work_item = self._work_item_client.get_work_item(id=int(unique_id), project=project_id)
+        current_rev = work_item.rev
+
+        # Create the json patch document
+        patch_document = [{"op": "test", "path": "/rev", "value": int(current_rev)}]
+        # data as to be flattened to be able to create the patch document
+        flat_data = flatten_dict(data, sep="/")
+        # Now we can create the patch document
+        for key, value in flat_data.items():
+            # We are not allowed to patch the work item id
+            if "id" in key:
+                continue
+            # example for key: fields/System.Title
+            correct_value = value
+            if isinstance(value, datetime):
+                correct_value = value.isoformat()
+            elif isinstance(value, RichTextValue):
+                # @TODO: For now we only use the string value without inline attachment handling
+                correct_value = value.value
+            elif isinstance(value, SyncStatusValue):
+                correct_value = value.get_value()
+
+            patch_document.append({"op": "add", "path": f"/{key}", "value": correct_value})
+
+        logger.debug("Patch document", patch_document=patch_document)
+
+        # Update the work item
+        work_item = self._work_item_client.update_work_item(
+            id=int(unique_id),
+            project=project_id,
+            document=patch_document,
+            validate_only=dry_run,
+            bypass_rules=True,  # Needed to create as another user and also set the correct dates
+            suppress_notifications=True,
+        )
+        logger.debug("Updated work item", work_item_id=work_item.id, work_item=work_item)
 
     def get_work_items(
         self,
