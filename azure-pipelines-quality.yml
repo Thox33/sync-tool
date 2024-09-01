@@ -1,0 +1,36 @@
+trigger:
+  branches:
+    include:
+      - '*'
+    exclude:
+      - develop
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  # Define Python version to use
+  python.version: '3.11'
+
+steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '$(python.version)'
+      addToPath: true
+    displayName: 'Use Python $(python.version)'
+
+  - script: |
+      pipx install poetry
+      poetry install --no-root
+    displayName: 'Install dependencies'
+
+  #  - script: |
+  #      poetry add pytest-azurepipelines
+  #      poetry run pytest
+  #    displayName: 'Tests'
+
+  - script: |
+      poetry self add "poetry-dynamic-versioning[plugin]"
+      poetry build
+      poetry run twine check dist/*
+    displayName: 'Check distribution'
