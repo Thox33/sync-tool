@@ -36,7 +36,11 @@
         "comparableFields": [
           "name",
           "description",
-          "createdAt",
+          "modifiedAt"
+        ],
+        "syncableFields": [
+          "name",
+          "description",
           "modifiedAt"
         ]
       }

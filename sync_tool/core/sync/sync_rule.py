@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Literal, Union
 
 from pydantic import BaseModel, Field, field_validator
 from pydantic_core.core_schema import ValidationInfo
@@ -23,7 +23,15 @@ class SyncRuleDestination(SyncRuleSource):
 
 
 class SyncRule(BaseModel):
+    """
+
+    mode:
+        single ->Performs an update from source to destination
+        both -> Performs an update from source to destination and vice versa based on the modified date
+    """
+
     type: str  # Internal type name
+    mode: Union[Literal["single"], Literal["both"]] = "single"
     source: SyncRuleSource
     transformer: Dict[str, List[Transformers]] = Field(default_factory=dict)
     destination: SyncRuleDestination

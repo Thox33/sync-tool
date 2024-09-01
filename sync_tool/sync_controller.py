@@ -1,5 +1,6 @@
 from collections import deque
 from copy import deepcopy
+from datetime import datetime
 from typing import Any, Deque, Dict, List, Tuple
 
 import structlog
@@ -116,9 +117,9 @@ class SyncController:
             # Check if the source and destination item should be updated -> then compare it
             elif item.sync_status == SyncItem.SyncStatus.FETCHED:
                 item = await self._sync_item_compare(item)
-            # Check if the source and destination item should are out of sync -> then update both sides
+            # Check if the source and destination item are out of sync -> then update one or both sides
             elif item.sync_status == SyncItem.SyncStatus.NEEDS_UPDATE:
-                pass  # TODO
+                item = await self._sync_item_update(item, dry_run=dry_run)
 
             item.update_state()
         except Exception as e:
@@ -206,7 +207,17 @@ class SyncController:
         )
 
         # Patch source data in source provider
-        # TODO
+        data_to_patch = {
+            "syncStatus": sync_status_value_destination,
+        }
+        mapped_to_patch_items = self._map_internal_type_to_items([data_to_patch], is_source=True)
+        await self._provider_source_instance.patch_data(
+            item_type=self._rule.source.mapping,
+            query=self._rule.source.query,
+            unique_id=work_item_id_source,
+            data=mapped_to_patch_items[0],
+            dry_run=dry_run,
+        )
 
         # Update sync item status
         item.sync_status = SyncItem.SyncStatus.SHOULD_FETCH
@@ -271,12 +282,19 @@ class SyncController:
         comparable_fields = self._internal_type.options.comparableFields
         for field in comparable_fields:
             if source_data[field] != destination_data[field]:
-                logger.debug(
-                    f"Source and destination data for field {field} are not equal!",
-                    source_value=source_data[field],
-                    destination_value=destination_data[field],
-                )
-                needs_sync = True
+                # Special case: datetime fields (we allow a small difference of 5 minutes)
+                if isinstance(source_data[field], datetime) and isinstance(destination_data[field], datetime):
+                    if abs(source_data[field] - destination_data[field]).seconds > (5 * 60):
+                        needs_sync = True
+                else:
+                    needs_sync = True
+
+                if needs_sync:
+                    logger.debug(
+                        f"Source and destination data are different for field '{field}': "
+                        f"{source_data[field]} != {destination_data[field]}",
+                        item=item.model_dump_json(),
+                    )
 
         if needs_sync:
             item.needs_update()
@@ -284,6 +302,91 @@ class SyncController:
         else:
             item.synced()
             logger.debug("Source and destination data are equal!", item=item.model_dump_json())
+
+        return item
+
+    async def _sync_item_update(self, item: SyncItem, dry_run: bool = False) -> SyncItem:
+        """Update the source and destination item for the sync item based on the
+        sync-able fields of the internal type and the mode inside the sync rule."""
+
+        # Prepare data for patching
+        source_data = item.get_source_data()
+        destination_data = item.get_destination_data()
+        if destination_data is None:
+            raise RuntimeError("Destination data is missing!")
+
+        data_to_patch = {}
+
+        if self._rule.mode == "single":
+            # Perform an update only from source to destination
+            logger.debug("Running one-way sync...", item=item.model_dump_json())
+            # Extract to patch data from source data
+            sync_able_fields = self._internal_type.options.syncableFields
+            for field in sync_able_fields:
+                if source_data.get(field) is not None:
+                    data_to_patch[field] = source_data[field]
+            # Transform data from source to destination
+            logger.debug("Transform fields from source to destination...", item=item.model_dump_json())
+            mapped_items = self._map_internal_type_to_items([data_to_patch], is_source=False)
+            # Patch using the destination provider
+            logger.debug("Patching data...", item=item.model_dump_json())
+            await self._provider_destination_instance.patch_data(
+                item_type=self._rule.source.mapping,
+                query=self._rule.destination.query,
+                unique_id=destination_data["id"],
+                data=mapped_items[0],
+                dry_run=dry_run,
+            )
+        elif self._rule.mode == "both":
+            # Perform an update from source to destination and vice versa based on the modified date
+            logger.debug("Running both-way sync based on last change date...", item=item.model_dump_json())
+            # Determine which item is newer
+            source_modified_date = source_data.get("modifiedDate")
+            destination_modified_date = destination_data.get("modifiedDate")
+            if source_modified_date is None or destination_modified_date is None:
+                raise RuntimeError("Modified date is missing in source or destination data!")
+            update_source_to_destination = source_modified_date > destination_modified_date
+            # Extract to patch data from source or destination data
+            sync_able_fields = self._internal_type.options.syncableFields
+            for field in sync_able_fields:
+                if (update_source_to_destination and source_data.get(field) is not None) or (
+                    not update_source_to_destination and destination_data.get(field) is not None
+                ):
+                    data_to_patch[field] = (
+                        source_data.get(field) if update_source_to_destination else destination_data[field]
+                    )
+            # Transform data from source or destination to internal type
+            logger.debug(
+                "Transform fields from source or destination to internal type...",
+                item=item.model_dump_json(),
+                update_source_to_destination=update_source_to_destination,
+            )
+            mapped_items = self._map_internal_type_to_items([data_to_patch], is_source=update_source_to_destination)
+            # Patch using the corresponding provider
+            logger.debug(
+                "Patching data...",
+                item=item.model_dump_json(),
+                update_source_to_destination=update_source_to_destination,
+            )
+            if update_source_to_destination:
+                await self._provider_destination_instance.patch_data(
+                    item_type=self._rule.destination.mapping,
+                    query=self._rule.destination.query,
+                    unique_id=destination_data["id"],
+                    data=mapped_items[0],
+                    dry_run=dry_run,
+                )
+            else:
+                await self._provider_source_instance.patch_data(
+                    item_type=self._rule.source.mapping,
+                    query=self._rule.source.query,
+                    unique_id=source_data["id"],
+                    data=mapped_items[0],
+                    dry_run=dry_run,
+                )
+
+        # Update state
+        item.synced()
 
         return item
 

@@ -129,7 +129,6 @@ class ProviderBase(metaclass=ABCMeta):
     ) -> None | str:
         """
         Create data in the provider.
-        Additionally we have to add the workitem as child to the destination query workitem.
 
         Args:
             item_type: The internal type of data inside of data and the item type to create, e.g. "items:Feature"
@@ -139,6 +138,23 @@ class ProviderBase(metaclass=ABCMeta):
 
         Returns:
             str: The unique id of the created item
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    async def patch_data(
+        self, item_type: str, query: SyncRuleQuery, unique_id: str, data: Dict[str, Any], dry_run: bool = False
+    ) -> None:
+        """
+        Patch data in the provider.
+
+        Args:
+            item_type: The internal type of data inside of data and the item type to patch, e.g. "items:Feature"
+            query: The destination query from the configuration of the sync rule
+            unique_id: The unique id of the item to patch
+            data: Plain object; already run through the transformation and mapping to be in the right format;
+                contains only fields that are part of syncableFields
+            dry_run: If True, the data will not be patched but the operation will be logged
         """
         raise NotImplementedError()
 

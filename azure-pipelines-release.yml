@@ -1,0 +1,49 @@
+trigger:
+  branches:
+    include:
+      - develop
+    exclude:
+      - '*'
+  tags:
+    include:
+      - '*'
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  # Define Python version to use
+  python.version: '3.11'
+  feedName: 'PythonPackages'
+  fullFeedName: 'DevOps/PythonPackages'
+
+steps:
+  - checkout: self
+    displayName: 'Checkout source code'
+    fetchDepth: 0
+
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '$(python.version)'
+    displayName: 'Use Python $(python.version)'
+
+  - script: |
+      pipx install poetry
+      poetry install --no-root
+    displayName: 'Install dependencies'
+
+  - task: TwineAuthenticate@1
+    displayName: 'Twine Authenticate '
+    inputs:
+      artifactFeed: $(fullFeedName)
+
+  - script: |
+      cat $(PYPIRC_PATH)
+    displayName: 'Show Twine configuration'
+
+  - script: |
+      poetry self add "poetry-dynamic-versioning[plugin]"
+      poetry build
+      poetry run twine check dist/*
+      poetry run twine upload --config-file $(PYPIRC_PATH) --verbose -r $(feedName) dist/*
+    displayName: 'Publish distribution'
