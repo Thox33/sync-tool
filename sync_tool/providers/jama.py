@@ -153,6 +153,9 @@ class JamaProvider(ProviderBase):
         if "release" in query_filter and "project" not in query_filter:
             raise ValueError("source has to contain project if release is present")
 
+        if "tag" in query_filter and "project" not in query_filter:
+            raise ValueError("source has to contain project if tag is present")
+
         if "project" in query_filter and not isinstance(query_filter["project"], list):
             raise ValueError("project has to be a list")
 
@@ -164,6 +167,9 @@ class JamaProvider(ProviderBase):
 
         if "release" in query_filter and not isinstance(query_filter["release"], list):
             raise ValueError("release has to be a list")
+
+        if "tag" in query_filter and not isinstance(query_filter["tag"], list):
+            raise ValueError("tag has to be a list")
 
         if "project" in query_filter:
             for project_name in query_filter["project"]:
@@ -190,6 +196,15 @@ class JamaProvider(ProviderBase):
                     self._get_release(release_id)
                 except ResourceNotFoundException:
                     raise ValueError(f"release {release_id} not found")
+
+        if "tag" in query_filter and "project" in query_filter:
+            project_name = query_filter["project"][0]
+            project_id = self._projects_by_name[project_name]["id"]
+            tags = self._client.get_tags(project=project_id)
+            tag_names = [tag["name"] for tag in tags]
+            for tag in query_filter["tag"]:
+                if tag not in tag_names:
+                    raise ValueError(f"tag {tag} not found in project {project_name}")
 
     def validate_sync_rule_destination(self, destination: SyncRuleDestination) -> None:
         """Validates the destination of a sync rule that it contains a valid mapping and query.
@@ -309,6 +324,17 @@ class JamaProvider(ProviderBase):
             document_key=document_keys,
             release=release_ids,
         )
+
+        # Filter by tags if provided
+        if "tag" in query_filter:
+            # Enrich items with tags
+            for item in items:
+                item["tags"] = [tag["name"] for tag in self._client.get_item_tags(item_id=item["id"])]
+
+            # Filter items by tags
+            tags = query_filter["tag"]
+            items = [item for item in items if any(tag in item["tags"] for tag in tags)]
+            logger.debug("filtered items by tags", items=items)
 
         return items
 
