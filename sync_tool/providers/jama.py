@@ -258,11 +258,11 @@ class JamaProvider(ProviderBase):
         """
         resource_path = "releases/" + str(release_id)
         try:
-            response = self._client.__core.get(resource_path)
+            response = self._client._JamaClient__core.get(resource_path)
         except CoreException as err:
             py_jama_rest_client_logger.error(err)
             raise APIException(str(err))
-        JamaClient.__handle_response_status(response)
+        JamaClient._JamaClient__handle_response_status(response)
         return response.json()["data"]
 
     def get_user_by_id(self, user_id: str) -> JamaUser | None:
