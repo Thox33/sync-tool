@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sync-tool"
-version = "0.0.0.post71.dev0+c802744"
+version = "0.0.1"
 description = ""
 authors = ["Pascal Helmer <pascal@pascalhelmer.de>"]
 readme = "README.md"
