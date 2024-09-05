@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sync-tool"
-version = "0.0.0"
+version = "0.0.0.post71.dev0+c802744"
 description = ""
 authors = ["Pascal Helmer <pascal@pascalhelmer.de>"]
 readme = "README.md"
@@ -17,6 +17,7 @@ sync-tool-provider-testing = "sync_tool.providers.testing:TestingProvider"
 [tool.poetry.extras]
 performance = ["uvloop"]
 jama = ["py-jama-rest-client"]
+azure-devops = ["azure-devops"]
 
 [tool.poetry.dependencies]
 python = ">=3.10, <3.12"
@@ -26,7 +27,8 @@ structlog = "24.1.0"
 py-jama-rest-client = { version = "1.17.1", optional = true }
 typer-slim = "0.12.3"
 python-dotenv = "1.0.1"
-azure-devops = "7.1.0b4"
+azure-devops = { version = "7.1.0b4", optional = true }
+rich = "13.8.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "3.7.0"
@@ -53,6 +55,7 @@ py-jama-rest-client = "1.17.1"
 types-requests = "2.31.0.20240406"
 twine = "^5.1.1"
 poetry-dynamic-versioning = "^1.4.0"
+azure-devops = "7.1.0b4"
 
 [build-system]
 requires = ["poetry-core>=1.6.1", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
@@ -93,6 +96,6 @@ exclude_dirs = ["docs", "tests"]
 skips = []
 
 [tool.poetry-dynamic-versioning]
-enable = true
+enable = false
 vcs = "git"
 style = "pep440"
