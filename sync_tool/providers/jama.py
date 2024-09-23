@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, TypedDict
 
 import structlog
 from py_jama_rest_client.client import APIException, JamaClient, ResourceNotFoundException
-from py_jama_rest_client.core import CoreException, py_jama_rest_client_logger
+from py_jama_rest_client.core import CoreException
 from pydantic import BaseModel
 
 from sync_tool.core.provider.provider_base import ProviderBase
@@ -288,10 +288,12 @@ class JamaProvider(ProviderBase):
         try:
             response = self._client._JamaClient__core.get(resource_path)
         except CoreException as err:
-            py_jama_rest_client_logger.error(err)
+            logger.error(err)
             raise APIException(str(err))
         JamaClient._JamaClient__handle_response_status(response)
-        return response.json()["data"]
+        json_obj = response.json()
+        logger.debug("loaded releases for project", project_id=project_id, json_obj=json_obj)
+        return json_obj["data"]
 
     def get_user_by_id(self, user_id: str) -> JamaUser | None:
         return self._users.get(user_id)
