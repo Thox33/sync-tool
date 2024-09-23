@@ -70,8 +70,11 @@ class JamaProvider(ProviderBase):
 
         config = JamaProviderConfig(**options)
         # Validate credentials
+        logger.debug("creating client")
         client = JamaProvider._create_client(config)
+        logger.debug("validating credentials")
         client.get_current_user()
+        logger.debug("credentials are valid")
 
     def __init__(self, url: str, clientId: str, clientSecret: str) -> None:
         self._config = JamaProviderConfig(
