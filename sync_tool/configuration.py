@@ -131,7 +131,7 @@ def load_configuration(config_path: str = CONFIGURATION_FILE_NAME, load_environm
     if (
         load_environment_file
     ):  # This is only for testing purposes as we got an filesystem error while searching for the .env file
-        load_dotenv()
+        load_dotenv(dotenv_path=str(Path.cwd() / ".env"))
 
     # Check if we need to create a new configuration file
     if not configuration_path.exists():
