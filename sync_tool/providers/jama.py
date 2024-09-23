@@ -27,6 +27,11 @@ class JamaProject(TypedDict):
     name: str
 
 
+class JamaRelease(TypedDict):
+    id: str
+    name: str
+
+
 JamaAbstractItem = Dict[str, Any]
 
 
@@ -46,6 +51,9 @@ class JamaProvider(ProviderBase):
     _item_types: Dict[str, JamaItemTypeID]  # Normalized by display name; Value is the item type ID
     _projects_by_id: Dict[str, JamaProject]  # Normalized by project ID
     _projects_by_name: Dict[str, JamaProject]  # Normalized by project name
+    _releases_by_project_id: Dict[
+        str, Dict[str, JamaRelease]
+    ]  # str#1 = Jama Project Id; str#2 = Release Id; Normalized by release name
 
     @staticmethod
     def _create_client(config: JamaProviderConfig) -> JamaClient:
@@ -80,6 +88,7 @@ class JamaProvider(ProviderBase):
         self._load_users()
         self._load_item_types()
         self._load_projects()
+        self._releases_by_project_id = {}
 
     def _load_users(self) -> None:
         """Retrieve all users from Jama. Normalize and store them in a dictionary."""
@@ -113,6 +122,15 @@ class JamaProvider(ProviderBase):
         self._projects_by_id = projects_normalized_by_id
         self._projects_by_name = projects_normalized_by_name
         logger.debug("loaded projects", projects=self._projects_by_id)
+
+    def _load_releases_by_project_id(self, project_id: str) -> None:
+        """Retrieve all releases for a project from Jama. Normalize and store them in a dictionary."""
+        releases_list = self._get_releases(project_id=project_id)
+        releases_normalized: Dict[str, JamaRelease] = {}
+        for release in releases_list:
+            releases_normalized[str(release["name"])] = JamaRelease(id=str(release["id"]), name=release["name"])
+        self._releases_by_project_id[str(project_id)] = releases_normalized
+        logger.debug("loaded releases for project", project_id=project_id, releases=self._releases_by_project_id)
 
     async def get_item_url_for_id(self, unique_id: str) -> str:
         """Return the URL to the item in the provider.
@@ -191,11 +209,21 @@ class JamaProvider(ProviderBase):
                     raise ValueError(f"documentKey {document_key} not found")
 
         if "release" in query_filter:
-            for release_id in query_filter["release"]:
-                try:
-                    self._get_release(release_id)
-                except ResourceNotFoundException:
-                    raise ValueError(f"release {release_id} not found")
+            # Resolve releases for each project
+            project_ids = [self._projects_by_name[project_name]["id"] for project_name in query_filter["project"]]
+            for project_id in project_ids:
+                self._load_releases_by_project_id(project_id=project_id)
+
+            # Check if provided release name existing in any provided project id
+            for release_name in query_filter["release"]:
+                found = False
+                for project_id in project_ids:
+                    if self._releases_by_project_id[project_id][release_name] is not None:
+                        found = True
+                        break
+
+                if not found:
+                    raise ValueError(f"release {release_name} not found in provided project names")
 
         if "tag" in query_filter and "project" in query_filter:
             project_name = query_filter["project"][0]
@@ -246,17 +274,17 @@ class JamaProvider(ProviderBase):
             if not found_item:
                 raise ValueError(f"destination query item {parent_item_id} not found in project {project}")
 
-    def _get_release(self, release_id: str) -> Dict[str, Any]:
+    def _get_releases(self, project_id: str) -> List[Dict[str, Any]]:
         """
-        Gets release information for a specific release.
+        Gets release information for a specific project id.
 
         Args:
-            release_id: The api id of the release to fetch
+            project_id: The api id of the project to fetch releases for
 
-        Returns: JSON object
+        Returns: List[{id: number, name: string, ...}]
 
         """
-        resource_path = "releases/" + str(release_id)
+        resource_path = "releases?project=" + str(project_id)
         try:
             response = self._client._JamaClient__core.get(resource_path)
         except CoreException as err:
@@ -313,8 +341,13 @@ class JamaProvider(ProviderBase):
         else:
             document_keys = None
 
-        if "release" in query_filter:
-            release_ids = query_filter["release"]
+        if "release" in query_filter and project_ids:
+            release_ids = []
+            for project_id in project_ids:
+                for release_name in query_filter["release"]:
+                    release = self._releases_by_project_id.get(project_id, {}).get(release_name)
+                    if release:
+                        release_ids.append(release["id"])
         else:
             release_ids = None
 
