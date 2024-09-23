@@ -27,6 +27,7 @@ def configuration_validate() -> None:
         typer.echo(f"Loaded configuration: {config.model_dump_json(indent=2)}")
         typer.echo("Configuration is valid!")
     except Exception as e:
+        logger.error("Configuration is invalid", error=e)
         typer.echo(f"Configuration is invalid: {e}")
         raise typer.Exit(code=1)
 
