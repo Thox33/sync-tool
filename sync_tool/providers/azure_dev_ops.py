@@ -380,6 +380,11 @@ class AzureDevOpsProvider(ProviderBase):
         else:
             logger.info("No parent relation will be created")
 
+        translation_dict = {
+            "fields/SyncTool Status": "fields/Custom.SyncToolStatus",
+            "fields/System.ChangedBy/uniqueName": "fields/System.ChangedBy",
+            "fields/System.CreatedBy/uniqueName": "fields/System.CreatedBy",
+        }
         # Create the json patch document
         patch_document = []
         # data as to be flattened to be able to create the patch document
@@ -399,7 +404,7 @@ class AzureDevOpsProvider(ProviderBase):
             elif isinstance(value, SyncStatusValue):
                 correct_value = value.get_value()
 
-            patch_document.append({"op": "add", "path": f"/{key}", "value": correct_value})
+            patch_document.append({"op": "add", "path": f"/{translation_dict.get(key, key)}", "value": correct_value})
 
         if parent_item_id:
             patch_document.append(
@@ -438,6 +443,12 @@ class AzureDevOpsProvider(ProviderBase):
         work_item = self._work_item_client.get_work_item(id=int(unique_id), project=project_id)
         current_rev = work_item.rev
 
+        translation_dict = {
+            "fields/SyncTool Status": "fields/Custom.SyncToolStatus",
+            "fields/System.ChangedBy/uniqueName": "fields/System.ChangedBy",
+            "fields/System.CreatedBy/uniqueName": "fields/System.CreatedBy",
+        }
+
         # Create the json patch document
         patch_document = [{"op": "test", "path": "/rev", "value": int(current_rev)}]
         # data as to be flattened to be able to create the patch document
@@ -457,7 +468,7 @@ class AzureDevOpsProvider(ProviderBase):
             elif isinstance(value, SyncStatusValue):
                 correct_value = value.get_value()
 
-            patch_document.append({"op": "add", "path": f"/{key}", "value": correct_value})
+            patch_document.append({"op": "add", "path": f"/{translation_dict.get(key, key)}", "value": correct_value})
 
         logger.debug("Patch document", patch_document=patch_document)
 
